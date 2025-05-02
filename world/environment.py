@@ -229,6 +229,8 @@ class Environment:
             - 1: Move up
             - 2: Move left
             - 3: Move right
+            - 4: Do nothing
+            - 5: Move top-right
         Args:
             action: Integer representing the action the agent should
                 take. 
@@ -262,13 +264,18 @@ class Environment:
         if val > self.sigma:
             actual_action = action
         else:
-            actual_action = random.randint(0, 3)
-        
-        # Make the move
-        self.info["actual_action"] = actual_action
-        direction = action_to_direction(actual_action)    
-        new_pos = (self.agent_pos[0] + direction[0], self.agent_pos[1] + direction[1])
+            actual_action = random.randint(0, 5)
 
+        # Make the move (changed in order to handle null agent)
+        if actual_action == 4:
+            # Do nothing if the action is 4
+            self.info["actual_action"] = actual_action
+            new_pos = self.agent_pos  # Agent stays in the same position
+        else:
+            self.info["actual_action"] = actual_action
+            direction = action_to_direction(actual_action)
+            new_pos = (self.agent_pos[0] + direction[0], self.agent_pos[1] + direction[1])    
+        
         # Calculate the reward for the agent
         reward = self.reward_fn(self.grid, new_pos)
 
@@ -306,10 +313,10 @@ class Environment:
             case 0:  # Moved to an empty tile
                 reward = -1
             case 1 | 2:  # Moved to a wall or obstacle
-                reward = -5
+                reward = -7
                 pass
             case 3:  # Moved to a target tile
-                reward = 10
+                reward = 20
                 # "Illegal move"
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",

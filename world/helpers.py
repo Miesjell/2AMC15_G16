@@ -7,6 +7,8 @@ def action_to_direction(action):
         1: (0, -1),  # Up
         2: (-1, 0),  # Left
         3: (1, 0),   # Right
+        4: (0, 0),   # No action
+        5: (1, -1),   # Top right diagonal
     }
     return directions[action]
 
