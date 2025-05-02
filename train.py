@@ -3,7 +3,9 @@ Train your RL Agent in this file.
 """
 
 from argparse import ArgumentParser
+import importlib
 from pathlib import Path
+import re
 from tqdm import trange
 
 try:
@@ -37,11 +39,43 @@ def parse_args():
                    help="Number of iterations to go through.")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
+    p.add_argument("-a", "--agent", type=str, default="RandomAgent",
+                   help="Name of the agent class to use (e.g., RandomAgent)")
     return p.parse_args()
 
 
+def load_agent(agent_name: str):
+    """
+    Dynamically load and instantiate an agent class based on its name.
+    
+    Args:
+        agent_name: Name of the agent class to load (e.g., "RandomAgent").
+        This should be the exact name of the class, not the module. 
+        The class should be defined in a module named after the class in snake_case.
+        For example, "RandomAgent" should be in a module named "random_agent.py".
+    
+    Returns:
+        An instance of the specified agent class
+    """
+    try:
+        # convert to snake_case for module name
+        # Example: "RandomAgent" -> "random_agent"
+        module_name = re.sub(r'(?<!^)(?=[A-Z])', '_', agent_name).lower()
+        
+        # Import module
+        module = importlib.import_module(f"agents.{module_name}")
+        
+        # Get the class and instantiate it
+        agent_class = getattr(module, agent_name)
+        print(f"Loaded agent class: {agent_class}")
+        return agent_class()
+    except (ImportError, AttributeError) as e:
+        print(f"Error loading agent '{agent_name}': {e}")
+        print("Falling back to RandomAgent.")
+        return RandomAgent()
+    
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+         sigma: float, random_seed: int, agent_name: str):
     """Main loop of the program."""
 
     for grid in grid_paths:
@@ -51,7 +85,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                           random_seed=random_seed)
         
         # Initialize agent
-        agent = RandomAgent()
+        agent = load_agent(agent_name)
+        print(f"Agent: {agent}")
         
         # Always reset the environment to initial state
         state = env.reset()
@@ -75,4 +110,4 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)
