@@ -11,6 +11,7 @@ from tqdm import trange
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
+    from agents.mc_onpolicy import MonteCarloOnPolicyAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -22,6 +23,7 @@ except ModuleNotFoundError:
         sys.path.extend(root_path)
     from world import Environment
     from agents.random_agent import RandomAgent
+    from agents.mc_onpolicy import MonteCarloOnPolicyAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
