@@ -1,17 +1,30 @@
 """Monte Carlo On-Policy Agent
-This is an agent that uses Monte Carlo methods to learn the value function.
+This is an agent that uses on polic first visit Monte Carlo control for epsilon soft policies to approximate the optimal policy.
 """
 import numpy as np
 from agents import BaseAgent
 
 class MonteCarloOnPolicyAgent(BaseAgent):
-    def __init__(self, gamma: float = 0.9, epsilon: float = 0.1):
-        self.gamma = gamma
+    def __init__(self, gamma: float = 0.9, epsilon: float = 0.1, action_space: list = None):
+        # Need to inialize an epsilon greedy policy, a Q fuction and a returns list
         self.epsilon = epsilon
         self.state_action_values = {}  # Q(s, a)
+        self.action_space = action_space if action_space is not None else [0, 1, 2, 3]
         self.returns = {}  # Returns(s, a)
         self.policy = {}  # π(a|s)
+        self.gamma = gamma # Discount factor for sum of future rewards
+        # Explicity initalize the greedy policy here
         # Could be a place to specify the number of episodes to run
+
+    def _initialize_state_policy(self, state):
+        """
+        Initialize epsilon-soft policy for a new state.
+        """
+        if state not in self.policy:
+            self.policy[state] = {}
+            num_actions = len(self.action_space)
+            for action in self.action_space:
+                self.policy[state][action] = 1.0 / num_actions  # uniform initially
 
     def update(self, state: tuple[int, int], reward: float, action, episode: list):
         """
@@ -23,11 +36,15 @@ class MonteCarloOnPolicyAgent(BaseAgent):
             episode: The full episode as a list of (state, action, reward) tuples.
         """
         G = 0
+        visited = set()
+
         for t in reversed(range(len(episode))):
             s, a, r = episode[t]
-            G = r + self.gamma * G  # Discounted sum of rewards
+            G = r + self.gamma * G
 
-            if (s, a) not in [(x[0], x[1]) for x in episode[:t]]:
+            if (s, a) not in visited:
+                visited.add((s, a))
+
                 if (s, a) not in self.returns:
                     self.returns[(s, a)] = []
                 self.returns[(s, a)].append(G)
@@ -35,21 +52,26 @@ class MonteCarloOnPolicyAgent(BaseAgent):
                 # Update Q(s, a)
                 self.state_action_values[(s, a)] = np.mean(self.returns[(s, a)])
 
-                # Update policy π(a|s)
+                # Ensure state policy is initialized
+                self._initialize_state_policy(s)
+
+                # Update policy π(a|s) to be epsilon-soft wrt current Q
                 best_action = max(
-                    [a for a in range(4)],
-                    key=lambda a: self.state_action_values.get((s, a), 0)
+                    self.action_space,
+                    key=lambda act: self.state_action_values.get((s, act), 0)
                 )
-                for a in range(4):
-                    if a == best_action:
-                        self.policy[(s, a)] = 1 - self.epsilon + (self.epsilon / 4)
+
+                num_actions = len(self.action_space)
+                for act in self.action_space:
+                    if act == best_action:
+                        self.policy[s][act] = 1 - self.epsilon + self.epsilon / num_actions
                     else:
-                        self.policy[(s, a)] = self.epsilon / 4
+                        self.policy[s][act] = self.epsilon / num_actions
 
     def take_action(self, state: tuple[int, int]) -> int:
-        # Choose an action based on the policy
-        if state not in self.policy:
-            # Initialize uniform random policy if state is unseen
-            self.policy[state] = {a: 1 / 4 for a in range(4)} # the probablities for each action all become 0.25
-        actions, probabilities = zip(*self.policy[state].items())
-        return np.random.choice(actions, p=probabilities)
+        """
+        Choose an action for the given state using the current policy.
+        """
+        self._initialize_state_policy(state)
+        actions, probs = zip(*self.policy[state].items())
+        return np.random.choice(actions, p=probs)
