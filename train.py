@@ -80,92 +80,7 @@ def load_agent(agent_name: str, env: Environment):
         print("Falling back to RandomAgent.")
         return RandomAgent()
 
-def animate_q_tables(folder_path: str ="q_tables"):
-    """
-    Create an animated heatmap from Q-tables stored as JSON files in a folder.
 
-    Args:
-        folder_path (str): Path to the folder containing Q-table files.
-    """
-    # First ensure numpy is installed
-    try:
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        from matplotlib.animation import FuncAnimation
-    except ImportError:
-        print("Required libraries not found. Install them with:")
-        print("pip install numpy matplotlib seaborn")
-        return None
-        
-    # Load Q-tables from files
-    q_tables = []
-    for file_name in sorted(os.listdir(folder_path)):  # Sort to ensure correct order
-        if file_name.endswith(".json"):  # Assuming Q-tables are saved as JSON
-            with open(os.path.join(folder_path, file_name), "r") as f:
-                q_table_dict = json.load(f)
-                q_tables.append(q_table_dict)
-
-    # Create the animation
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    def update(frame):
-        ax.clear()
-        q_table = q_tables[frame]
-        
-        # Extract states and coordinates
-        states = []
-        for state_str in q_table.keys():
-            # Parse string representation of tuple like "(1, 1)"
-            coords = state_str.strip('()').split(',')
-            x = int(coords[0].strip())
-            y = int(coords[1].strip())
-            states.append((x, y))
-        
-        # Find maximum coordinate values to determine grid size
-        max_x = max([s[0] for s in states]) + 1
-        max_y = max([s[1] for s in states]) + 1
-        
-        # Initialize the grid for max Q-values
-        grid = np.zeros((max_x, max_y))
-        # Mark states that don't have data with NaN (will show as a different color)
-        grid.fill(np.nan)
-        
-        # Populate grid with maximum Q-values for each state
-        for state_str, actions in q_table.items():
-            coords = state_str.strip('()').split(',')
-            x = int(coords[0].strip())
-            y = int(coords[1].strip())
-            
-            if actions:  # Check if actions dictionary is not empty
-                # Store only maximum Q-value for this state
-                grid[x, y] = max(actions.values())
-        
-        # Create heatmap - use a masked array to handle NaN values
-        masked_grid = np.ma.masked_invalid(grid)
-        cmap = plt.cm.coolwarm
-        cmap.set_bad('lightgray')  # Color for NaN values
-        
-        sns.heatmap(
-            masked_grid,
-            annot=True,  # Show the actual max Q-values
-            fmt=".2f",   # Format with 2 decimal places
-            cmap=cmap,
-            cbar_kws={'label': 'Max Q-Value'},
-            ax=ax,
-        )
-        
-        ax.set_title(f"Max Q-values at Episode {frame + 1}")
-        ax.set_xlabel("Y coordinate")
-        ax.set_ylabel("X coordinate")
-        ax.invert_yaxis()  # Make the origin bottom-left like a standard coordinate system
-
-    ani = FuncAnimation(fig, update, frames=len(q_tables), repeat=False)
-    
-    # Save the animation
-    ani.save("q_table_animation.mp4", writer="ffmpeg", fps=10)
-    
-    return ani
 
     
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
@@ -176,13 +91,13 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Set up the environment
         env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed, agent_start_pos=(1,1))
+                          random_seed=random_seed, agent_start_pos=(1,5))
         
         # Initialize agent
         agent = load_agent(agent_name, env)
         print(f"Agent: {agent}")
         
-        for episode in range(1000):
+        for episode in range(10000):
             print(f"Episode: {episode}")
             # Always reset the environment to initial state
             state = env.reset()
@@ -191,27 +106,21 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 # Agent takes an action based on the latest observation and info.
                 action = agent.take_action(state)
 
+                prev_state = state
                 state, reward, terminated, info = env.step(action)
                 
                 # If the final state is reached, stop.
                 if terminated:
                     break
-        # Log the Q-table every 10 episodes
-                agent.update(state, reward, info["actual_action"])
-
+                agent.update(prev_state, reward, info["actual_action"], state)
+                # agent.update_parameters(episode, 1000)
             
             # Evaluate the agent
             Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-        # if (episode + 1) % 10 == 0:
-            #     print(f"Q-Table after episode {episode + 1}:")
-            #     for state, actions in agent.q_table.items():
-            #         print(f"State {state}: {actions}")
-                
-                # Save Q-table as a JSON file
+
             with open(f"q_tables/episode_{episode + 1}.json", "w") as f:
                 json.dump({str(k): v for k, v in agent.q_table.items()}, f)
 
-        animate_q_tables()    # The action is performed in the environment
 
 
 
