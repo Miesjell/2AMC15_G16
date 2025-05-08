@@ -104,6 +104,21 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
             agent.update(state, reward, info["actual_action"])
 
+        episodes = 100
+        steps_per_episode = iters // episodes  # this is derived from --iter
+
+        for episode in range(episodes):
+            state = env.reset() # Always reset the environment to initial state
+            if hasattr(agent, "reset"):  # optional reset method in agent
+                agent.reset()
+
+            for _ in range(steps_per_episode):
+                action = agent.take_action(state)
+                state, reward, terminated, info = env.step(action)
+                agent.update(state, reward, info["actual_action"])
+                if terminated:
+                    break
+
         # Evaluate the agent
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
