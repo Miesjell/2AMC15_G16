@@ -114,11 +114,17 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         # # Evaluate the agent
         # Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+        
+        # Stopping criterion parameters
+        patience = 10  # Number of episodes to wait for improvement
+        best_performance = float('-inf')  # Best performance seen so far
+        no_improvement_count = 0  # Counter for episodes without improvement
 
         # Generate multiple episodes
         for episode_num in range(iters):  # Generate `iters` episodes
             state = env.reset()  # Reset the environment for a new episode
             episode = []  # Track the current episode
+            cumulative_reward = 0  # Track cumulative reward for the episode
             
             while True:  # Generate a single episode
                 # Agent takes an action based on the latest observation and info
@@ -130,6 +136,9 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 # Add the (state, action, reward) tuple to the episode
                 episode.append((state, action, reward))
                 
+                # Accumulate the reward
+                cumulative_reward += reward
+                
                 # If the final state is reached, stop the episode
                 if terminated:
                     break
@@ -137,13 +146,24 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             # Update the agent with the completed episode
             agent.update(state, reward, action, episode)
             
-            # Optional: Log progress
-            print(f"Episode {episode_num + 1}/{iters} completed.")
+            # Check for improvement
+            if cumulative_reward > best_performance:
+                best_performance = cumulative_reward
+                no_improvement_count = 0  # Reset the counter
+            else:
+                no_improvement_count += 1  # Increment the counter
+            
+            # Log progress
+            print(f"Episode {episode_num + 1}/{iters} completed. Cumulative reward: {cumulative_reward}")
+            
+            # Stop training if no improvement for `patience` episodes
+            if no_improvement_count >= patience:
+                print(f"Stopping early after {episode_num + 1} episodes. No improvement for {patience} episodes.")
+                break
         
         # Evaluate the agent after training
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-
-
+        
 if __name__ == '__main__':
     args = parse_args()
     main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)
