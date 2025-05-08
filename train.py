@@ -1,5 +1,5 @@
 """
-Train your RL Agent in this file. 
+Train your RL Agent in this file.
 """
 
 from argparse import ArgumentParser
@@ -26,15 +26,13 @@ except ModuleNotFoundError:
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
     p.add_argument("GRID", type=Path, nargs="+",
-                   help="Paths to the grid file to use. There can be more than "
-                        "one.")
+                   help="Paths to the grid file to use. There can be more than one.")
     p.add_argument("--no_gui", action="store_true",
                    help="Disables rendering to train faster")
     p.add_argument("--sigma", type=float, default=0.1,
                    help="Sigma value for the stochasticity of the environment.")
     p.add_argument("--fps", type=int, default=30,
-                   help="Frames per second to render at. Only used if "
-                        "no_gui is not set.")
+                   help="Frames per second to render at. Only used if no_gui is not set.")
     p.add_argument("--iter", type=int, default=1000,
                    help="Number of iterations to go through.")
     p.add_argument("--random_seed", type=int, default=0,
@@ -43,29 +41,13 @@ def parse_args():
                    help="Name of the agent class to use (e.g., RandomAgent)")
     return p.parse_args()
 
-
 def load_agent(agent_name: str):
     """
     Dynamically load and instantiate an agent class based on its name.
-    
-    Args:
-        agent_name: Name of the agent class to load (e.g., "RandomAgent").
-        This should be the exact name of the class, not the module. 
-        The class should be defined in a module named after the class in snake_case.
-        For example, "RandomAgent" should be in a module named "random_agent.py".
-    
-    Returns:
-        An instance of the specified agent class
     """
     try:
-        # convert to snake_case for module name
-        # Example: "RandomAgent" -> "random_agent"
         module_name = re.sub(r'(?<!^)(?=[A-Z])', '_', agent_name).lower()
-        
-        # Import module
         module = importlib.import_module(f"agents.{module_name}")
-        
-        # Get the class and instantiate it
         agent_class = getattr(module, agent_name)
         print(f"Loaded agent class: {agent_class}")
         return agent_class()
@@ -73,40 +55,46 @@ def load_agent(agent_name: str):
         print(f"Error loading agent '{agent_name}': {e}")
         print("Falling back to RandomAgent.")
         return RandomAgent()
-    
+
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str):
-    """Main loop of the program."""
 
     for grid in grid_paths:
-        
-        # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
-        
+
+        # Set up the environment with fixed start position for fair comparison
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
+                          random_seed=random_seed, agent_start_pos=(3, 11))
+
         # Initialize agent
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
-        
-        # Always reset the environment to initial state
+
+        # Reset environment to get initial state
         state = env.reset()
         for _ in trange(iters):
-            
-            # Agent takes an action based on the latest observation and info.
+
+            # Agent takes action based on current state
             action = agent.take_action(state)
 
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
-            
-            # If the final state is reached, stop.
+            # Take action in the environment
+            next_state, reward, terminated, info = env.step(action)
+
+            # Inform agent of the result (update policy/values/etc.)
+            agent.update(next_state, reward, info["actual_action"], info)
+
+            # End of episode logic for episodic agents (e.g., MC)
             if terminated:
+                if hasattr(agent, "update_Q"):
+                    agent.update_Q()
                 break
 
-            agent.update(state, reward, info["actual_action"])
+            state = next_state  # move to next state
 
-        # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-
+        # Evaluate trained agent
+        Environment.evaluate_agent(grid, agent, iters, sigma,
+                                   random_seed=random_seed,
+                                   agent_start_pos=(3, 11),
+                                   show_images=False)
 
 if __name__ == '__main__':
     args = parse_args()
