@@ -11,7 +11,7 @@ from tqdm import trange
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
-    from agents.mc_onpolicy import MonteCarloOnPolicyAgent
+    from agents.monte_carlo_on_policy_agent import MonteCarloOnPolicyAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -23,7 +23,7 @@ except ModuleNotFoundError:
         sys.path.extend(root_path)
     from world import Environment
     from agents.random_agent import RandomAgent
-    from agents.mc_onpolicy import MonteCarloOnPolicyAgent
+    from agents.monte_carlo_on_policy_agent import MonteCarloOnPolicyAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -84,29 +84,63 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Set up the environment
         env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
+                          random_seed=random_seed, agent_start_pos=[3,11]) # This is for the board A2
+        # env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
+        #                   random_seed=random_seed, agent_start_pos=[3,3])
         
         # Initialize agent
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
         
-        # Always reset the environment to initial state
-        state = env.reset()
-        for _ in trange(iters):
+        # # Always reset the environment to initial state
+        # state = env.reset()
+        # # Added this to train.py to keep track of the episode
+        # episode = []
+        # for _ in trange(iters):
             
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
+        #     # Agent takes an action based on the latest observation and info.
+        #     action = agent.take_action(state)
 
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
+        #     # The action is performed in the environment
+        #     state, reward, terminated, info = env.step(action)
+
+        #     episode.append((state, action, reward))
             
-            # If the final state is reached, stop.
-            if terminated:
-                break
+        #     # If the final state is reached, stop.
+        #     if terminated:
+        #         break
 
-            agent.update(state, reward, info["actual_action"])
+        #     agent.update(state, reward, info["actual_action"], episode)
 
-        # Evaluate the agent
+        # # Evaluate the agent
+        # Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+
+        # Generate multiple episodes
+        for episode_num in range(iters):  # Generate `iters` episodes
+            state = env.reset()  # Reset the environment for a new episode
+            episode = []  # Track the current episode
+            
+            while True:  # Generate a single episode
+                # Agent takes an action based on the latest observation and info
+                action = agent.take_action(state)
+                
+                # The action is performed in the environment
+                state, reward, terminated, info = env.step(action)
+                
+                # Add the (state, action, reward) tuple to the episode
+                episode.append((state, action, reward))
+                
+                # If the final state is reached, stop the episode
+                if terminated:
+                    break
+            
+            # Update the agent with the completed episode
+            agent.update(state, reward, action, episode)
+            
+            # Optional: Log progress
+            print(f"Episode {episode_num + 1}/{iters} completed.")
+        
+        # Evaluate the agent after training
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 

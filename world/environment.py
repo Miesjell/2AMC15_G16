@@ -315,6 +315,8 @@ class Environment:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
                                  f"at position {agent_pos}")
         return reward
+    
+    # Idea could be too change the reward function
 
     @staticmethod
     def evaluate_agent(grid_fp: Path,
