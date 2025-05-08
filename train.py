@@ -41,6 +41,8 @@ def parse_args():
                    help="Random seed value for the environment.")
     p.add_argument("-a", "--agent", type=str, default="RandomAgent",
                    help="Name of the agent class to use (e.g., RandomAgent)")
+    p.add_argument("--episodes", type=int, default=1,
+               help="Number of episodes to train the agent.")
     return p.parse_args()
 
 
@@ -75,39 +77,38 @@ def load_agent(agent_name: str):
         return RandomAgent()
     
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int, agent_name: str):
+         sigma: float, random_seed: int, agent_name: str, episodes: int):
     """Main loop of the program."""
 
+    #new loop with episodes
     for grid in grid_paths:
-        
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
-        
+        env = Environment(grid, no_gui, sigma=sigma, agent_start_pos=(3, 11), target_fps=fps, random_seed=random_seed)
         # Initialize agent
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
         
-        # Always reset the environment to initial state
-        state = env.reset()
-        for _ in trange(iters):
-            
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
+        for _ in trange(episodes, desc="Training episodes"):
+            state = env.reset()
+            terminated = False
+            while not terminated:
+                # Agent takes an action based on the latest observation and info.
+                action = agent.take_action(state)
+                # The action is performed in the environment
+                next_state, reward, terminated, info = env.step(action)
+                agent.update(next_state, reward, info["actual_action"])
+                state = next_state
 
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
-            
-            # If the final state is reached, stop.
-            if terminated:
-                break
+                # If the final state is reached in current episode, reset before next episode
+                if terminated:
+                    agent.prev_state = None
+                    agent.prev_action = None
 
-            agent.update(state, reward, info["actual_action"])
 
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
 
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, args.episodes)
