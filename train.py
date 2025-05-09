@@ -84,7 +84,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Set up the environment
         env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed, agent_start_pos=[3,11]) # This is for the board A2
+                          random_seed=random_seed, agent_start_pos=[3,11]) # This is for the board A1
         # env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
         #                   random_seed=random_seed, agent_start_pos=[3,3])
         
@@ -117,34 +117,35 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Stopping criterion parameters
         max_episode_length = 2000  # Maximum length of an episode
-        # Generate multiple episodes
-        for episode_num in range(iters):  # Generate `iters` episodes
-            state = env.reset()  # Reset the environment for a new episode
-            episode = []  # Track the current episode
+        #successful_episodes_total = 0
+
+        for episode_num in range(iters):
+            state = env.reset()
+            episode = []
             steps = 0
-            
-            while steps < max_episode_length:  # Generate a single episode
-                # Agent takes an action based on the latest observation and info
+            #reached_goal = False
+
+            # if successful_episodes_total >= 3:
+            #     agent.epsilon = max(agent.epsilon * agent.decay, agent.min_epsilon)
+
+            while steps < max_episode_length:
                 action = agent.take_action(state)
-                
-                # The action is performed in the environment
                 state, reward, terminated, info = env.step(action)
-                
-                # Add the (state, action, reward) tuple to the episode
                 episode.append((state, action, reward))
-                
-                steps += 1  # Increment the step count
-                
-                # If the final state is reached, stop the episode
+                steps += 1
+
+                # if terminated and info.get("reached_target", False):
+                #     successful_episodes_total += 1
+                #     reached_goal = True
+                #     break
+
                 if terminated:
                     break
-            
-            # Update the agent with the completed episode
+
             agent.update(state, reward, action, episode)
-           
-        # Evaluate the agent after training
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-        
+
+        Environment.evaluate_agent(grid, agent, iters, sigma,
+                                   random_seed=random_seed, agent_start_pos=[3,11])
 if __name__ == '__main__':
     args = parse_args()
     main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)

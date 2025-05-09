@@ -7,9 +7,11 @@ from agents import BaseAgent
 
 # This algorithm is based on Sutton and Barto, 2nd edition, section 5.4 p.101 http://incompleteideas.net/book/RLbook2020.pdf
 class MonteCarloOnPolicyAgent(BaseAgent):
-    def __init__(self, gamma: float = 0.9, epsilon: float = 0.3, action_space: list = None):
+    def __init__(self, gamma: float = 0.9, epsilon: float = 0.5, min_epsilon = 0.05, decay =0.995, action_space: list = None):
         # Need to inialize an epsilon greedy policy, a Q fuction and a returns list
         self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
+        self.decay = decay
         self.state_action_values = {}  # Q(s, a)
         self.action_space = action_space if action_space is not None else [0, 1, 2, 3]
         self.returns = {}  # Returns(s, a)
@@ -47,11 +49,26 @@ class MonteCarloOnPolicyAgent(BaseAgent):
             if (s, a) not in visited: # First visit only
                 visited.add((s, a))
 
+                # # Replace mean with running average
+                # if (s, a) not in self.state_action_values:
+                #     self.state_action_values[(s, a)] = G
+                #     self.returns[(s, a)] = 1
+                # else:
+                #     self.returns[(s, a)] += 1
+                #     alpha = 1 / self.returns[(s, a)]
+                #     self.state_action_values[(s, a)] += alpha * (G - self.state_action_values[(s, a)])
+
+                #alpha = 0.1
+                # if (s,a) not in self.state_action_values: # First visit only
+                #     self.state_action_values[(s, a)] = G
+                # else:
+                #     self.state_action_values[(s, a)] += alpha * (G - self.state_action_values[(s, a)])
+
                 if (s, a) not in self.returns: # From other episodes
-                    self.returns[(s, a)] = []
+                   self.returns[(s, a)] = []
                 self.returns[(s, a)].append(G)
 
-                # Update Q(s, a)
+                #Update Q(s, a)
                 self.state_action_values[(s, a)] = np.mean(self.returns[(s, a)])
 
                 # This only does something when the state is not already in the policy
@@ -69,6 +86,8 @@ class MonteCarloOnPolicyAgent(BaseAgent):
                         self.policy[s][act] = 1 - self.epsilon + self.epsilon / num_actions
                     else:
                         self.policy[s][act] = self.epsilon / num_actions
+        # if reward > 0:
+        #     self.epsilon = max(self.epsilon * self.decay, self.min_epsilon)
 
     def take_action(self, state: tuple[int, int]) -> int:
         """
