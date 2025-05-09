@@ -116,21 +116,27 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         # Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
         
         # Stopping criterion parameters
-        max_episode_length = 2000  # Maximum length of an episode
+        max_episode_length = 300  # Maximum length of an episode
         #successful_episodes_total = 0
 
         for episode_num in range(iters):
             state = env.reset()
             episode = []
             steps = 0
+            episode_reward = 0
+            reward_log = []
             #reached_goal = False
 
             # if successful_episodes_total >= 3:
             #     agent.epsilon = max(agent.epsilon * agent.decay, agent.min_epsilon)
 
+            if episode_num > 500:
+                agent.epsilon = 0.05
+            
             while steps < max_episode_length:
                 action = agent.take_action(state)
                 state, reward, terminated, info = env.step(action)
+                episode_reward += reward
                 episode.append((state, action, reward))
                 steps += 1
 
@@ -141,7 +147,9 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
                 if terminated:
                     break
-
+        
+            reward_log.append(episode_reward)
+            print(f"Episode {episode_num + 1}/{iters} - Reward: {episode_reward}")        
             agent.update(state, reward, action, episode)
 
         Environment.evaluate_agent(grid, agent, iters, sigma,
