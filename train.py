@@ -7,6 +7,7 @@ import importlib
 from pathlib import Path
 import re
 from tqdm import trange
+import matplotlib.pyplot as plt
 
 try:
     from world import Environment
@@ -84,29 +85,43 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
     for grid in grid_paths:
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, agent_start_pos=(3, 11), target_fps=fps, random_seed=random_seed)
+        # Initialize lists to make learning curve (TDR vs episode number)
+        episode_numbers = []
+        episode_returns = []
         # Initialize agent
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
         
-        for _ in trange(episodes, desc="Training episodes"):
+        for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
             state = env.reset()
             terminated = False
             while not terminated:
-                # Agent takes an action based on the latest observation and info.
+                # Agent takes an action based on the latest observation and info
                 action = agent.take_action(state)
                 # The action is performed in the environment
                 next_state, reward, terminated, info = env.step(action)
                 agent.update(next_state, reward, info["actual_action"])
                 state = next_state
 
-                # If the final state is reached in current episode, reset before next episode
+                # If the final state is reached in current episode
                 if terminated:
+                # Evaluate the agent and append TDR and episode number to lists. Evaluate per x episodes!
+                    if episode%50 == 0:
+                        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
+                        total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
+                        episode_returns.append(total_return)
+                        episode_numbers.append(episode + 1)
+                    # Reset before next episode
                     agent.prev_state = None
                     agent.prev_action = None
 
-
-        # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
+        # Plot learning curve
+        plt.plot(episode_numbers, episode_returns, label="Episode Return")
+        plt.xlabel("Episode")
+        plt.ylabel("Total Discounted Return")
+        plt.title("Learning Curve")
+        plt.grid(True)
+        plt.show()
 
 
 if __name__ == '__main__':
