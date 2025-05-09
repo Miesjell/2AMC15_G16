@@ -1,0 +1,6 @@
+cumulative_reward: -18888
+total_steps: 5000
+total_agent_moves: 1528
+total_failed_moves: 3472
+total_targets_reached: 0
+targets_remaining: 1

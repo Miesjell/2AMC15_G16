@@ -12,6 +12,7 @@ try:
     from world import Environment
     from agents.random_agent import RandomAgent
     from agents.monte_carlo_on_policy_agent import MonteCarloOnPolicyAgent
+    #from world.environment import _distance_to_target_reward_function
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -92,30 +93,6 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
         
-        # # Always reset the environment to initial state
-        # state = env.reset()
-        # # Added this to train.py to keep track of the episode
-        # episode = []
-        # for _ in trange(iters):
-            
-        #     # Agent takes an action based on the latest observation and info.
-        #     action = agent.take_action(state)
-
-        #     # The action is performed in the environment
-        #     state, reward, terminated, info = env.step(action)
-
-        #     episode.append((state, action, reward))
-            
-        #     # If the final state is reached, stop.
-        #     if terminated:
-        #         break
-
-        #     agent.update(state, reward, info["actual_action"], episode)
-
-        # # Evaluate the agent
-        # Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-        
-        # Stopping criterion parameters
         max_episode_length = 300  # Maximum length of an episode
         #successful_episodes_total = 0
 
@@ -130,8 +107,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             # if successful_episodes_total >= 3:
             #     agent.epsilon = max(agent.epsilon * agent.decay, agent.min_epsilon)
 
-            if episode_num > 500:
-                agent.epsilon = 0.05
+            # if episode_num > 500:
+            #     agent.epsilon = 0.05
             
             while steps < max_episode_length:
                 action = agent.take_action(state)
@@ -147,10 +124,23 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
                 if terminated:
                     break
-        
-            reward_log.append(episode_reward)
-            print(f"Episode {episode_num + 1}/{iters} - Reward: {episode_reward}")        
+                
             agent.update(state, reward, action, episode)
+            agent.decay_epsilon()
+
+            # Check convergence
+            if episode_num % 100 == 0 and agent.has_converged():
+                print(f"[Converged] Q-values stable at episode {episode_num}")
+
+            # Check positional behavior
+            if episode_num % 100 == 0:
+                agent.analyze_behavior(episode)
+
+            # Periodic debugging
+            if episode_num % 500 == 0:
+                print(f"Episode {episode_num} | Epsilon: {agent.epsilon:.3f}")
+                for s in list(agent.policy.keys())[:3]:
+                    print(f"Policy at {s}: {agent.policy[s]}")
 
         Environment.evaluate_agent(grid, agent, iters, sigma,
                                    random_seed=random_seed, agent_start_pos=[3,11])
