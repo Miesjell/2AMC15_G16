@@ -68,7 +68,7 @@ def load_agent(agent_name: str, env):
         # Get the class and instantiate it
         agent_class = getattr(module, agent_name)
         print(f"Loaded agent class: {agent_class}")
-        return agent_class(env.grid)
+        return agent_class(env)
     except (ImportError, AttributeError) as e:
         print(f"Error loading agent '{agent_name}': {e}")
         print("Falling back to RandomAgent.")
