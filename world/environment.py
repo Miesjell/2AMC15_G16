@@ -329,7 +329,7 @@ class Environment:
         What this does is it creates a completely new environment from the
         provided grid and does a number of steps _without_ processing rewards
         for the agent. This means that the agent doesn't learn here and simply
-        provides actions for any provided observation.
+        provides actions for any observation.
 
         For each evaluation run, this produces a statistics file in the out
         directory which is a txt. This txt contains the values:
