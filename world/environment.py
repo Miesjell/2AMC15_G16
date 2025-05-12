@@ -309,7 +309,7 @@ class Environment:
                 reward = -5
                 pass
             case 3:  # Moved to a target tile
-                reward = 10 #changed from 10
+                reward = 1000 #changed from 10
                 # "Illegal move"
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
