@@ -8,7 +8,7 @@ class OnPolicyMonteCarlo(BaseAgent):
                  epsilon=1.0,
                  min_epsilon=0.05,
                  decay_rate=0.9997,
-                 freeze_exploration_after=20000, #changed to 20000
+                 freeze_exploration_after=30000, #changed to 20000
                  max_episode_len=3000,
                  optimistic_init=100.0):
         self.gamma = gamma
@@ -31,7 +31,7 @@ class OnPolicyMonteCarlo(BaseAgent):
         self.steps_done += 1
 
         # ε schedule
-        if self.steps_done < 10000: #changed to 10000
+        if self.steps_done < 20000: #changed to 10000
             self.epsilon = 0.9
         elif self.steps_done > self.freeze_exploration_after:
             self.epsilon = 0.0
