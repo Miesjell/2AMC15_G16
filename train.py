@@ -68,7 +68,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             while True:
                 action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
-                agent.update(next_state, reward, info["actual_action"], info)
+                #agent.update(next_state, reward, info["actual_action"], info)
+                agent.update(state, reward, action, info)
 
                 if terminated:
                     if hasattr(agent, "update_Q"):
@@ -87,4 +88,4 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, agent_start_pos=(3, 11))
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, agent_start_pos=(3, 1))
