@@ -7,8 +7,8 @@ class OnPolicyMonteCarlo(BaseAgent):
                  gamma=0.9,
                  epsilon=1.0,
                  min_epsilon=0.05,
-                 decay_rate=0.9997,
-                 freeze_exploration_after=30000, #changed to 20000
+                 decay_rate=0.997,
+                 freeze_exploration_after=5000, 
                  max_episode_len=3000,
                  optimistic_init=100.0):
         self.gamma = gamma
@@ -31,23 +31,32 @@ class OnPolicyMonteCarlo(BaseAgent):
         self.steps_done += 1
 
         # ε schedule
-        if self.steps_done < 20000: #changed to 10000
-            self.epsilon = 0.9
-        elif self.steps_done > self.freeze_exploration_after:
-            self.epsilon = 0.0
-        else:
+        # Only decay until freeze point
+        if self.steps_done < self.freeze_exploration_after:
             self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
+        else:
+            self.epsilon = 0.0
 
         # ε-greedy
         if random.random() < self.epsilon:
             return random.randrange(4)
         return int(np.argmax(self.Q[state]))
 
-    def update(self, next_state, reward, action, info):
-        # Record the experience
-        self.episode.append((tuple(next_state), action, reward))
+    # def update(self, state, reward, action, info):
+    #     # Record the experience
+    #     self.episode.append((tuple(state), action, reward))
 
-        # If end of episode (max length or terminal), update Q from the full episode
+    #     # If end of episode (max length or terminal), update Q from the full episode
+    #     if (len(self.episode) >= self.max_episode_len
+    #         or info.get("target_reached", False)
+    #         or info.get("terminated", False)):
+    #         self._every_visit_update()
+    #         self.episode = []
+
+    def update(self, state, reward, action, info):
+        self.episode.append((tuple(state), action, reward))
+
+    def finalize_episode(self, info):
         if (len(self.episode) >= self.max_episode_len
             or info.get("target_reached", False)
             or info.get("terminated", False)):

@@ -65,16 +65,33 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         # Corrected training loop: Run 'iters' full episodes
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
-            while True:
-                action = agent.take_action(state)
-                next_state, reward, terminated, info = env.step(action)
-                agent.update(next_state, reward, info["actual_action"], info)
+            step_count = 0
+            # reached_target = False
+            # while True:
+            #     action = agent.take_action(state)
+            #     next_state, reward, terminated, info = env.step(action)
+            #     agent.update(state, reward, info["actual_action"], info)
+            #     step_count += 1
+            #     if info.get("target_reached", False):
+            #         reached_target = True
 
-                if terminated:
-                    if hasattr(agent, "update_Q"):
-                        agent.update_Q()
-                    break
-                state = next_state
+            #     if terminated or step_count >= agent.max_episode_len:
+            #         # Only learn if target was reached
+            #         if reached_target:
+            #             agent._every_visit_update()
+            #         agent.episode = []
+            #         break
+            #     state = next_state
+            action = agent.take_action(state)
+            next_state, reward, terminated, info = env.step(action)
+            agent.update(state, reward, info["actual_action"], info)
+            
+            if terminated or step_count >= agent.max_episode_len:
+                agent.finalize_episode(info)
+                break
+
+            state = next_state
+            step_count += 1
 
         # Freeze agent's policy before evaluation
         if hasattr(agent, "freeze_policy"):
