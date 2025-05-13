@@ -69,7 +69,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
                 #agent.update(next_state, reward, info["actual_action"], info)
-                agent.update(state, reward, action, info)
+                agent.update(state, reward, info["actual_action"], info)
 
                 if terminated:
                     if hasattr(agent, "update_Q"):
