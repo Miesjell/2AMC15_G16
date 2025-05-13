@@ -43,9 +43,9 @@ class OnPolicyMonteCarlo(BaseAgent):
             return random.randrange(4)
         return int(np.argmax(self.Q[state]))
 
-    def update(self, next_state, reward, action, info):
+    def update(self, state, reward, action, info):
         # Record the experience
-        self.episode.append((tuple(next_state), action, reward))
+        self.episode.append((tuple(state), action, reward))
 
         # If end of episode (max length or terminal), update Q from the full episode
         if (len(self.episode) >= self.max_episode_len
