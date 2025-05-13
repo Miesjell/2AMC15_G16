@@ -9,7 +9,7 @@ class OnPolicyMonteCarlo(BaseAgent):
                  min_epsilon=0.05,
                  decay_rate=0.9997,
                  freeze_exploration_after=30000, 
-                 max_episode_len=500,
+                 max_episode_len=3000,
                  optimistic_init=100.0):
         self.gamma = gamma
         self.epsilon = epsilon
@@ -41,7 +41,7 @@ class OnPolicyMonteCarlo(BaseAgent):
         # ε-greedy; this is different than from actually having a policy stored
         if random.random() < self.epsilon:
             return random.randrange(4)
-        return int(np.argmax(self.Q[state]))
+        return int(np.argmax(self.Q[state])) 
 
     def update(self, state, reward, action, info):
         # Record the experience

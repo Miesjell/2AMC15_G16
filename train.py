@@ -65,13 +65,16 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         # Corrected training loop: Run 'iters' full episodes
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
+            steps = 0
             while True:
                 action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
-                #agent.update(next_state, reward, info["actual_action"], info)
-                agent.update(state, reward, info["actual_action"], info)
+                agent.update(state, reward, action, info)
+                #agent.update(state, reward, info["actual_action"], info)
+                steps += 1
 
-                if terminated:
+                if (terminated or info.get("terminated", False) or 
+                    info.get("target_reached", False) or steps >= agent.max_episode_len):
                     if hasattr(agent, "update_Q"):
                         agent.update_Q()
                     break
@@ -88,4 +91,4 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, agent_start_pos=(3, 1))
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, agent_start_pos=(3, 11))
