@@ -1,5 +1,5 @@
 """
-Train your RL Agent in this file. 
+Train your RL Agent in this file.
 """
 
 from argparse import ArgumentParser
@@ -53,16 +53,34 @@ def load_agent(agent_name: str):
         print("Falling back to RandomAgent.")
         return RandomAgent()
 
+# Clean, state-based reward function
+def goal_state_reward(grid, new_pos):
+    """
+    State-based reward:
+    - Goal (3): +1000
+    - Wall or obstacle (1 or 2): -5
+    - Empty cell: -1
+    """
+    cell = grid[new_pos]
+    if cell == 3:
+        return 1000
+    elif cell in (1, 2):
+        return -5
+    return -1
+
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str, agent_start_pos=(3, 11)):
 
     for grid in grid_paths:
+        # Use reward function during training
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
-                          random_seed=random_seed, agent_start_pos=agent_start_pos)
+                          random_seed=random_seed, agent_start_pos=agent_start_pos,
+                          reward_fn=lambda grid, new_pos: goal_state_reward(grid, new_pos))
+
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
 
-        # Corrected training loop: Run 'iters' full episodes
+        # Training loop over full episodes
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
             steps = 0
@@ -70,23 +88,21 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
                 agent.update(state, reward, info["actual_action"], info)
-                print(f"Step {steps}: state={state}, action={action}, actual_action={info.get('actual_action', action)}, next_state={next_state}, reward={reward}")
-                
-                steps += 1
-                if steps >= agent.max_episode_len:
-                    break     
 
-                if terminated:
-                    if hasattr(agent, "update_Q"):
-                        agent.update_Q()
+                steps += 1
+                if steps >= agent.max_episode_len or terminated:
                     break
                 state = next_state
-
-        # Freeze agent's policy before evaluation
+        
+        # Freeze exploration before evaluation
         if hasattr(agent, "freeze_policy"):
             agent.freeze_policy()
 
-        # Evaluate the agent
+        # Evaluate with same reward
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
+                          random_seed=random_seed, agent_start_pos=agent_start_pos,
+                          reward_fn=lambda grid, new_pos: goal_state_reward(grid, new_pos))
+
         Environment.evaluate_agent(grid, agent, iters, sigma,
                                    random_seed=random_seed,
                                    agent_start_pos=agent_start_pos)
