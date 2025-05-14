@@ -183,6 +183,20 @@ def main(
                 agent.prev_state = None
                 agent.prev_action = None
 
+                            # Plot learning curve
+            plt.plot(episode_numbers, episode_returns, label="Episode Return")
+            plt.xlabel("Episode")
+            plt.ylabel("Total Discounted Return")
+            plt.title("Learning Curve")
+            plt.grid(True)
+            # Save plot to file
+            grid_dir = Path("learning_curves") / grid.stem
+            grid_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Add timestamp to filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
+
 if __name__ == '__main__':
     args = parse_args()
     main(
