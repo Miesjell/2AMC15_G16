@@ -1,5 +1,5 @@
 """
-Train your RL Agent in this file. 
+Train your RL Agent in this file.
 """
 
 from argparse import ArgumentParser
@@ -33,12 +33,12 @@ def parse_args():
                    help="Sigma value for the stochasticity of the environment.")
     p.add_argument("--fps", type=int, default=30,
                    help="Frames per second to render at. Only used if no_gui is not set.")
-    p.add_argument("--iter", type=int, default=1000,
+    p.add_argument("--iter", type=int, default=10000,
                    help="Number of episodes to run during training.")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
     p.add_argument("-a", "--agent", type=str, default="RandomAgent",
-                   help="Name of the agent class to use (e.g., RandomAgent)")
+                   help="Name of the agent class to use (e.g., OnPolicyMonteCarlo)")
     return p.parse_args()
 
 def load_agent(agent_name: str):
@@ -53,34 +53,58 @@ def load_agent(agent_name: str):
         print("Falling back to RandomAgent.")
         return RandomAgent()
 
+# Custom reward function
+def goal_state_reward(grid, new_pos):
+    """
+    State-based reward:
+    - Goal (3): +1000
+    - Wall or obstacle (1 or 2): -5
+    - Empty cell: -1
+    """
+    cell = grid[new_pos]
+    if cell == 3:
+        return 1000
+    elif cell in (1, 2):
+        return -5
+    return -1
+
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str, agent_start_pos=(3, 11)):
 
     for grid in grid_paths:
+        # Training environment setup
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
-                          random_seed=random_seed, agent_start_pos=agent_start_pos)
+                          random_seed=random_seed, agent_start_pos=agent_start_pos,
+                          reward_fn=lambda grid, new_pos: goal_state_reward(grid, new_pos))
+
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
 
-        # Corrected training loop: Run 'iters' full episodes
+        # Training loop over episodes
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
+
             while True:
                 action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
-                agent.update(next_state, reward, info["actual_action"], info)
+                agent.update(state, next_state, reward, action, info)
 
-                if terminated:
-                    if hasattr(agent, "update_Q"):
-                        agent.update_Q()
+                # Break if environment is terminal OR agent signals episode end (e.g., max steps)
+                if terminated or getattr(agent, "episode_done", False):
+                    agent.episode_done = False  # Reset for next episode
                     break
+
                 state = next_state
 
-        # Freeze agent's policy before evaluation
+        # Freeze exploration before evaluation
         if hasattr(agent, "freeze_policy"):
             agent.freeze_policy()
 
-        # Evaluate the agent
+        # Evaluation
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
+                          random_seed=random_seed, agent_start_pos=agent_start_pos,
+                          reward_fn=lambda grid, new_pos: goal_state_reward(grid, new_pos))
+
         Environment.evaluate_agent(grid, agent, iters, sigma,
                                    random_seed=random_seed,
                                    agent_start_pos=agent_start_pos)
