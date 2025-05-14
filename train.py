@@ -44,7 +44,7 @@ def parse_args():
     return p.parse_args()
 
 
-def load_agent(agent_name: str):
+def load_agent(agent_name: str, env):
     """
     Dynamically load and instantiate an agent class based on its name.
     
@@ -68,7 +68,7 @@ def load_agent(agent_name: str):
         # Get the class and instantiate it
         agent_class = getattr(module, agent_name)
         print(f"Loaded agent class: {agent_class}")
-        return agent_class()
+        return agent_class(env)
     except (ImportError, AttributeError) as e:
         print(f"Error loading agent '{agent_name}': {e}")
         print("Falling back to RandomAgent.")
@@ -85,7 +85,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                           random_seed=random_seed)
         
         # Initialize agent
-        agent = load_agent(agent_name)
+        agent = load_agent(agent_name, env)
         print(f"Agent: {agent}")
         
         # Always reset the environment to initial state
