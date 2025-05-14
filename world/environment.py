@@ -323,7 +323,8 @@ class Environment:
                        sigma: float = 0.,
                        agent_start_pos: tuple[int, int] = None,
                        random_seed: int | float | str | bytes | bytearray = 0,
-                       show_images: bool = False):
+                       show_images: bool = False,
+                       gamma: float = 0.95):
         """Evaluates a single trained agent's performance.
 
         What this does is it creates a completely new environment from the
@@ -359,10 +360,18 @@ class Environment:
         # Add initial agent position to the path
         agent_path = [env.agent_pos]
 
+        # Initialize values for TDR
+        total_return = 0
+        discount = 1.0
+
         for _ in trange(max_steps, desc="Evaluating agent"):
             
             action = agent.take_action(state)
-            state, _, terminated, _ = env.step(action)
+            state, reward, terminated, _ = env.step(action)
+
+            # Calculate discounted return
+            total_return += discount * reward 
+            discount *= gamma            
 
             agent_path.append(state)
 
@@ -375,3 +384,4 @@ class Environment:
         file_name = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
 
         save_results(file_name, env.world_stats, path_image, show_images)
+        return total_return
