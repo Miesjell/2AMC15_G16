@@ -10,7 +10,7 @@ class MonteCarloAgent(BaseAgent):
         self,
         n_actions: int = 4,
         epsilon: float = 1, # Start initially with epsilon = 1 such that we have high exploration
-        gamma: float = 0.9,
+        gamma: float = 0.99,
         first_visit: bool = True,
     ):
         self.n_actions = n_actions
