@@ -82,9 +82,6 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 state = next_state
             agent.epsilon = max(0.05, agent.epsilon * 0.995)
 
-
-        
-
         # Evaluate the agent
         Environment.evaluate_agent(grid, agent, iters, sigma,
                                    random_seed=random_seed,
