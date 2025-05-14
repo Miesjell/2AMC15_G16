@@ -98,7 +98,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 next_state, reward, terminated, info = env.step(action)
                 episode.append((state, info["actual_action"], reward))
                 step_count += 1
-                if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
+                if terminated or step_count >= getattr(agent, "max_episode_len", 2500):
                     #agent.update(episode)
                     #break
                     if info.get("target_reached", False):   # only successful eps

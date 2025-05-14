@@ -8,7 +8,7 @@ class MonteCarloAgent(BaseAgent):
     def __init__(
         self,
         n_actions: int = 4,
-        epsilon: float = 1, #initial quite okay result with 0.1, but change to 1 for later epsilon decay
+        epsilon: float = 1, # Start initially with epsilon = 1 such that we have high exploration
         gamma: float = 0.99,
         first_visit: bool = True,
     ):
@@ -17,8 +17,8 @@ class MonteCarloAgent(BaseAgent):
         self.gamma = gamma
         self.first_visit = first_visit
 
-        self.Q: Dict[Tuple[int, int], float] = defaultdict(float)
-        self.returns: Dict[Tuple[int, int], List[float]] = defaultdict(list)
+        self.Q: Dict[Tuple[int, int], float] = defaultdict(float) # Default dict allows us to set the default value to 0 for unseen state, action tuple
+        self.returns: Dict[Tuple[int, int], List[float]] = defaultdict(list) # For each state-action pair, returns 
 
     def select_action(self, state: int) -> int:
         """Selects an action using ε-soft policy."""
