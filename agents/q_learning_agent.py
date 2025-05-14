@@ -6,7 +6,6 @@ from agents import BaseAgent
 class QLearningAgent(BaseAgent):
     def __init__(
         self,
-        env,
         alpha=0.1,
         gamma=0.95,
         epsilon=0.8,
@@ -14,7 +13,6 @@ class QLearningAgent(BaseAgent):
         epsilon_decay=0.9995,
         num_actions=4,
     ):
-        self.env = env
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
