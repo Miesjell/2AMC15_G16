@@ -62,45 +62,19 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
 
-        # Corrected training loop: Run 'iters' full episodes
+        # Corrected and updated training loop: Run 'iters' full episodes
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
             step_count = 0
             episode = []
-            # reached_target = False
-            # while True:
-            #     action = agent.take_action(state)
-            #     next_state, reward, terminated, info = env.step(action)
-            #     agent.update(state, reward, info["actual_action"], info)
-            #     step_count += 1
-            #     if info.get("target_reached", False):
-            #         reached_target = True
-
-            #     if terminated or step_count >= agent.max_episode_len:
-            #         # Only learn if target was reached
-            #         if reached_target:
-            #             agent._every_visit_update()
-            #         agent.episode = []
-            #         break
-            #     state = next_state
-            # action = agent.take_action(state)
-            # next_state, reward, terminated, info = env.step(action)
-            # agent.update(state, reward, info["actual_action"], info)
             
-            # if terminated or step_count >= agent.max_episode_len:
-            #     agent.finalize_episode(info)
-            #     break
-
-            # state = next_state
-            # step_count += 1
             while True:
-                action = agent.select_action(state)
+                action = agent.take_action(state)
                 next_state, reward, terminated, info = env.step(action)
                 episode.append((state, info["actual_action"], reward))
                 step_count += 1
                 if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
-                    #agent.update(episode)
-                    #break
+                
                     #if info.get("target_reached", False):   # only successful eps
                     agent.update(episode)
                     break
@@ -109,9 +83,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             agent.epsilon = max(0.05, agent.epsilon * 0.995)
 
 
-        # Freeze agent's policy before evaluation
-        if hasattr(agent, "freeze_policy"):
-            agent.freeze_policy()
+        
 
         # Evaluate the agent
         Environment.evaluate_agent(grid, agent, iters, sigma,
