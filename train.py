@@ -7,6 +7,7 @@ import importlib
 from pathlib import Path
 import re
 from tqdm import trange
+import os
 
 try:
     from world import Environment
@@ -81,9 +82,11 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
     for grid in grid_paths:
         
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
-        
+        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps,
+                          random_seed=random_seed
+                          , agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None
+                          )
+
         # Initialize agent
         agent = load_agent(agent_name)
         print(f"Agent: {agent}")
@@ -104,7 +107,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
             agent.update(state, reward, info["actual_action"])
 
-        episodes = 100
+        episodes = 1200
         steps_per_episode = iters // episodes  # this is derived from --iter
 
         for episode in range(episodes):
@@ -120,7 +123,9 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                     break
 
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed
+                                   , agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None
+                                   )
 
 
 if __name__ == '__main__':
