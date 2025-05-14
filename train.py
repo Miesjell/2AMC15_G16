@@ -137,44 +137,53 @@ def main(
         agent = load_agent(agent_name, env)
         print(f"Agent: {agent}")
 
-        # Always reset the environment to initial state
-        state = env.reset()
-        for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
-            state = env.reset()  # Always reset the environment to initial state
-            for _ in range(iters):
-                action = agent.take_action(state)
-                state, reward, terminated, info = env.step(action)
-                agent.update(state, reward, info["actual_action"])
-                # Evaluate the agent and append TDR and episode number to lists. Evaluate per x episodes!
+        if agent.__str__() == "MC_Agent":
+            # Corrected and updated training loop: Run 'iters' full episodes
+            for episode in trange(episodes, desc="Training Episodes"):
+                state = env.reset(agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+                step_count = 0
+                episode = []
+                
+                while True:
+                    action = agent.take_action(state)
+                    next_state, reward, terminated, info = env.step(action)
+                    episode.append((state, info["actual_action"], reward))
+                    step_count += 1
+                    if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
+                    
+                        #if info.get("target_reached", False):   # only successful eps
+                        agent.update(episode)
+                        break
 
-            if episode % 10 == 0:
-                total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
-                episode_returns.append(total_return)
-                episode_numbers.append(episode + 1)
+                    state = next_state
+                agent.epsilon = max(0.05, agent.epsilon * 0.995)
 
-            agent.prev_state = None
-            agent.prev_action = None
+            # Evaluate the agent
+            Environment.evaluate_agent(grid, agent, iters, sigma,
+                                    random_seed=random_seed,
+                                    agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+            
+        else:
 
+            # Always reset the environment to initial state
+            state = env.reset()
+            for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
+                state = env.reset()  # Always reset the environment to initial state
+                for _ in range(iters):
+                    action = agent.take_action(state)
+                    state, reward, terminated, info = env.step(action)
+                    agent.update(state, reward, info["actual_action"])
+                    # Evaluate the agent and append TDR and episode number to lists. Evaluate per x episodes!
 
-        # Plot learning curve
-        plt.plot(episode_numbers, episode_returns, label="Episode Return")
-        plt.xlabel("Episode")
-        plt.ylabel("Total Discounted Return")
-        plt.title("Learning Curve")
-        plt.grid(True)
-        plt.show()
-        # save plot to file
-        # create directory if it does not exist
-        griddir = Path("learning_curves")
-        grid_dir = griddir / grid.stem
-        if not grid_dir.exists():
-            grid_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Add timestamp to filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        plt.savefig(f"{grid_dir}/{grid.stem}_learning_curve_{timestamp}.png")
+                if episode % 10 == 0:
+                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
+                    episode_returns.append(total_return)
+                    episode_numbers.append(episode + 1)
 
-if __name__ == "__main__":
+                agent.prev_state = None
+                agent.prev_action = None
+
+if __name__ == '__main__':
     args = parse_args()
     main(
         args.GRID,

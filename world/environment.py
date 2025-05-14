@@ -304,12 +304,12 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -1
+                reward = -0.01
             case 1 | 2:  # Moved to a wall or obstacle
-                reward = -5
+                reward = -0.05
                 pass
             case 3:  # Moved to a target tile
-                reward = 10
+                reward = 5
                 # "Illegal move"
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
@@ -330,7 +330,7 @@ class Environment:
         What this does is it creates a completely new environment from the
         provided grid and does a number of steps _without_ processing rewards
         for the agent. This means that the agent doesn't learn here and simply
-        provides actions for any provided observation.
+        provides actions for any observation.
 
         For each evaluation run, this produces a statistics file in the out
         directory which is a txt. This txt contains the values:
