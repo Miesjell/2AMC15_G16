@@ -304,7 +304,7 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -0.001
+                reward = -0.01
             case 1 | 2:  # Moved to a wall or obstacle
                 reward = -0.05
                 pass
