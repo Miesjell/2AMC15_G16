@@ -66,6 +66,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         for episode in trange(iters, desc="Training Episodes"):
             state = env.reset(agent_start_pos=agent_start_pos)
             step_count = 0
+            episode = []
             # reached_target = False
             # while True:
             #     action = agent.take_action(state)
@@ -82,16 +83,31 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             #         agent.episode = []
             #         break
             #     state = next_state
-            action = agent.take_action(state)
-            next_state, reward, terminated, info = env.step(action)
-            agent.update(state, reward, info["actual_action"], info)
+            # action = agent.take_action(state)
+            # next_state, reward, terminated, info = env.step(action)
+            # agent.update(state, reward, info["actual_action"], info)
             
-            if terminated or step_count >= agent.max_episode_len:
-                agent.finalize_episode(info)
-                break
+            # if terminated or step_count >= agent.max_episode_len:
+            #     agent.finalize_episode(info)
+            #     break
 
-            state = next_state
-            step_count += 1
+            # state = next_state
+            # step_count += 1
+            while True:
+                action = agent.select_action(state)
+                next_state, reward, terminated, info = env.step(action)
+                episode.append((state, info["actual_action"], reward))
+                step_count += 1
+                if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
+                    #agent.update(episode)
+                    #break
+                    if info.get("target_reached", False):   # only successful eps
+                        agent.update(episode)
+                    break
+
+                state = next_state
+            agent.epsilon = max(0.05, agent.epsilon * 0.995)
+
 
         # Freeze agent's policy before evaluation
         if hasattr(agent, "freeze_policy"):

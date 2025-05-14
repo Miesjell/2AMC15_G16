@@ -304,12 +304,12 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -1
+                reward = -0.001
             case 1 | 2:  # Moved to a wall or obstacle
-                reward = -5
+                reward = -0.05
                 pass
             case 3:  # Moved to a target tile
-                reward = 1000
+                reward = 5
                 # "Illegal move"
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
