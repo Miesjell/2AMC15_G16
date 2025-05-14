@@ -1,13 +1,14 @@
 """
-Train your RL Agent in this file. 
+Train your RL Agent in this file.
 """
 
 from argparse import ArgumentParser
 import importlib
 from pathlib import Path
 import re
-from tqdm import trange
 import matplotlib.pyplot as plt
+from tqdm import trange
+from datetime import datetime
 
 try:
     from world import Environment
@@ -16,104 +17,143 @@ except ModuleNotFoundError:
     from os import path
     from os import pardir
     import sys
-    root_path = path.abspath(path.join(
-        path.join(path.abspath(__file__), pardir), pardir)
+
+    root_path = path.abspath(
+        path.join(path.join(path.abspath(__file__), pardir), pardir)
     )
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
     from agents.random_agent import RandomAgent
 
+
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
-    p.add_argument("GRID", type=Path, nargs="+",
-                   help="Paths to the grid file to use. There can be more than "
-                        "one.")
-    p.add_argument("--no_gui", action="store_true",
-                   help="Disables rendering to train faster")
-    p.add_argument("--sigma", type=float, default=0.1,
-                   help="Sigma value for the stochasticity of the environment.")
-    p.add_argument("--fps", type=int, default=30,
-                   help="Frames per second to render at. Only used if "
-                        "no_gui is not set.")
-    p.add_argument("--iter", type=int, default=1000,
-                   help="Number of iterations to go through.")
-    p.add_argument("--random_seed", type=int, default=0,
-                   help="Random seed value for the environment.")
-    p.add_argument("-a", "--agent", type=str, default="RandomAgent",
-                   help="Name of the agent class to use (e.g., RandomAgent)")
-    p.add_argument("--episodes", type=int, default=1,
-               help="Number of episodes to train the agent.")
+    p.add_argument(
+        "GRID",
+        type=Path,
+        nargs="+",
+        help="Paths to the grid file to use. There can be more than one.",
+    )
+    p.add_argument(
+        "--no_gui", action="store_true", help="Disables rendering to train faster"
+    )
+    p.add_argument(
+        "--sigma",
+        type=float,
+        default=0.1,
+        help="Sigma value for the stochasticity of the environment.",
+    )
+    p.add_argument(
+        "--fps",
+        type=int,
+        default=30,
+        help="Frames per second to render at. Only used if no_gui is not set.",
+    )
+    p.add_argument(
+        "--iter", type=int, default=1000, help="Number of iterations to go through."
+    )
+    p.add_argument(
+        "--random_seed",
+        type=int,
+        default=0,
+        help="Random seed value for the environment.",
+    )
+    p.add_argument(
+        "-a",
+        "--agent",
+        type=str,
+        default="RandomAgent",
+        help="Name of the agent class to use (e.g., RandomAgent)",
+    )
+    p.add_argument(
+        "-e",
+        "--episodes",
+        type=int,
+        default=1,
+    )
     return p.parse_args()
 
 
-def load_agent(agent_name: str):
+def load_agent(agent_name: str, env):
     """
     Dynamically load and instantiate an agent class based on its name.
-    
+
     Args:
         agent_name: Name of the agent class to load (e.g., "RandomAgent").
-        This should be the exact name of the class, not the module. 
+        This should be the exact name of the class, not the module.
         The class should be defined in a module named after the class in snake_case.
         For example, "RandomAgent" should be in a module named "random_agent.py".
-    
+
     Returns:
         An instance of the specified agent class
     """
     try:
         # convert to snake_case for module name
         # Example: "RandomAgent" -> "random_agent"
-        module_name = re.sub(r'(?<!^)(?=[A-Z])', '_', agent_name).lower()
-        
+        module_name = re.sub(r"(?<!^)(?=[A-Z])", "_", agent_name).lower()
+
         # Import module
         module = importlib.import_module(f"agents.{module_name}")
-        
+
         # Get the class and instantiate it
         agent_class = getattr(module, agent_name)
         print(f"Loaded agent class: {agent_class}")
-        return agent_class()
+        return agent_class(env)
     except (ImportError, AttributeError) as e:
         print(f"Error loading agent '{agent_name}': {e}")
         print("Falling back to RandomAgent.")
         return RandomAgent()
-    
-def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int, agent_name: str, episodes: int):
+
+
+def main(
+    grid_paths: list[Path],
+    no_gui: bool,
+    iters: int,
+    fps: int,
+    sigma: float,
+    random_seed: int,
+    agent_name: str,
+    episodes: int,
+):
     """Main loop of the program."""
 
-    #new loop with episodes
     for grid in grid_paths:
         # Set up the environment
-        env = Environment(grid, no_gui, sigma=sigma, agent_start_pos=(3, 11), target_fps=fps, random_seed=random_seed)
-        # Initialize lists to make learning curve (TDR vs episode number)
+        env = Environment(
+            grid,
+            no_gui,
+            sigma=sigma,
+            target_fps=fps,
+            random_seed=random_seed,
+            agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,
+        )
+
         episode_numbers = []
         episode_returns = []
-        # Initialize agent
-        agent = load_agent(agent_name)
-        print(f"Agent: {agent}")
-        
-        for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
-            state = env.reset()
-            terminated = False
-            while not terminated:
-                # Agent takes an action based on the latest observation and info
-                action = agent.take_action(state)
-                # The action is performed in the environment
-                next_state, reward, terminated, info = env.step(action)
-                agent.update(next_state, reward, info["actual_action"])
-                state = next_state
 
-                # If the final state is reached in current episode
-                if terminated:
+        # Initialize agent
+        agent = load_agent(agent_name, env)
+        print(f"Agent: {agent}")
+
+        # Always reset the environment to initial state
+        state = env.reset()
+        for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
+            state = env.reset()  # Always reset the environment to initial state
+            for _ in range(iters):
+                action = agent.take_action(state)
+                state, reward, terminated, info = env.step(action)
+                agent.update(state, reward, info["actual_action"])
                 # Evaluate the agent and append TDR and episode number to lists. Evaluate per x episodes!
-                    if episode%50 == 0:
-                        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
-                        total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3,11))
-                        episode_returns.append(total_return)
-                        episode_numbers.append(episode + 1)
-                    # Reset before next episode
-                    agent.prev_state = None
-                    agent.prev_action = None
+
+            if episode % 10 == 0:
+                total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
+                episode_returns.append(total_return)
+                episode_numbers.append(episode + 1)
+
+            agent.prev_state = None
+            agent.prev_action = None
+
 
         # Plot learning curve
         plt.plot(episode_numbers, episode_returns, label="Episode Return")
@@ -122,8 +162,26 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         plt.title("Learning Curve")
         plt.grid(True)
         plt.show()
+        # save plot to file
+        # create directory if it does not exist
+        griddir = Path("learning_curves")
+        grid_dir = griddir / grid.stem
+        if not grid_dir.exists():
+            grid_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Add timestamp to filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        plt.savefig(f"{grid_dir}/{grid.stem}_learning_curve_{timestamp}.png")
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, args.episodes)
+    main(
+        args.GRID,
+        args.no_gui,
+        args.iter,
+        args.fps,
+        args.sigma,
+        args.random_seed,
+        args.agent,
+        args.episodes,
+    )

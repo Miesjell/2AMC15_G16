@@ -1,45 +1,62 @@
+import numpy as np
 import random
-from collections import defaultdict
 from agents import BaseAgent
 
+
 class QLearningAgent(BaseAgent):
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1, num_actions=4):
-        """initialize Q-table and hyperparameters"""
-        self.alpha = alpha        # learning rate
-        self.gamma = gamma        # discount factor: how important are immediate (0)/future rewards (1)
-        self.epsilon = epsilon    # exploration rate
+    def __init__(
+        self,
+        env,
+        alpha=0.1,
+        gamma=0.95,
+        epsilon=0.8,
+        epsilon_min=0.05,
+        epsilon_decay=0.9995,
+        num_actions=4,
+    ):
+        self.env = env
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
         self.num_actions = num_actions
-        self.q_table = defaultdict(lambda: [0.0] * self.num_actions)
+        self.q_table = {}
+
         self.prev_state = None
         self.prev_action = None
 
-    def take_action(self, state: tuple[int, int]) -> int:
-        """choose an action based on epsilon-greedy policy."""
+    def _get_q_values(self, state):
+        state = tuple(state)
+        if state not in self.q_table:
+            self.q_table[state] = np.zeros(self.num_actions)
+        return self.q_table[state]
+
+    def take_action(self, state):
+        state = tuple(state)
+        q_values = self._get_q_values(state)
+
         if random.random() < self.epsilon:
             action = random.randint(0, self.num_actions - 1)
         else:
-            q_values = self.q_table[state]
-            max_q = max(q_values)
-            best_actions = [i for i, q in enumerate(q_values) if q == max_q]
-            action = random.choice(best_actions)
+            action = int(np.argmax(q_values))
+
         self.prev_state = state
         self.prev_action = action
         return action
 
-    def update(self, new_state: tuple[int, int], reward: float, actual_action: int):
-        """Update Q-table using the Q-learning update rule."""
+    def update(self, state, reward, actual_action):
         if self.prev_state is None or self.prev_action is None:
-            return  
+            return
 
-        max_future_q = max(self.q_table[new_state])
-        current_q = self.q_table[self.prev_state][self.prev_action]
+        state = tuple(state)
+        prev_q = self._get_q_values(self.prev_state)
+        curr_q = self._get_q_values(state)
 
-        # Q-learning update
-        self.q_table[self.prev_state][self.prev_action] += self.alpha * (
-            reward + self.gamma * max_future_q - current_q
-        )
+        best_future_q = np.max(curr_q)
+        td_target = reward + self.gamma * best_future_q
+        td_error = td_target - prev_q[self.prev_action]
+        prev_q[self.prev_action] += self.alpha * td_error
 
-        # reset previous state/action if episode ends
-        if reward == 10:  # reaching the goal in your reward function
-            self.prev_state = None
-            self.prev_action = None
+        # Decay epsilon
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
