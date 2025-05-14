@@ -3,7 +3,7 @@ import random
 from agents import BaseAgent
 
 class QLearningAgent(BaseAgent):
-    def __init__(self, alpha=0.1, gamma=0.95, epsilon=0.9, epsilon_min=0.05, epsilon_decay=0.999, num_actions=4):
+    def __init__(self, alpha=0.1, gamma=0.95, epsilon=0.8, epsilon_min=0.05, epsilon_decay=0.9995, num_actions=4):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -51,5 +51,5 @@ class QLearningAgent(BaseAgent):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
         # Optional: debug print
-        if reward == 10:
-            print(f"🎯 Reached goal at {state} (Q: {prev_q[self.prev_action]:.2f})")
+        # if reward == 10:
+            # print(f"🎯 Reached goal at {state} (Q: {prev_q[self.prev_action]:.2f})")
