@@ -8,11 +8,13 @@ from typing import Dict, Tuple, Optional, List
 class MonteCarloAgent(BaseAgent):
     def __init__(
         self,
+        env,
         n_actions: int = 4,
         epsilon: float = 1, # Start initially with epsilon = 1 such that we have high exploration
         gamma: float = 0.99,
         first_visit: bool = True,
     ):
+        self.env = env
         self.n_actions = n_actions
         self.epsilon = epsilon
         self.gamma = gamma
@@ -41,5 +43,8 @@ class MonteCarloAgent(BaseAgent):
             visited.add((state, action))
             self.returns[(state, action)].append(G)
             self.Q[(state, action)] = np.mean(self.returns[(state, action)])
+
+    def __str__(self):
+        return "MC_Agent"
 
    
