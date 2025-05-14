@@ -45,18 +45,18 @@ class MonteCarloAgent(BaseAgent):
             self.returns[(state, action)].append(G)
             self.Q[(state, action)] = np.mean(self.returns[(state, action)])
 
-    def get_policy(self) -> Dict[int, int]:
-        """Returns the current greedy policy."""
-        policy = {}
-        for (state, _), _ in self.Q.items():
-            best_action = int(np.argmax([self.Q[(state, a)] for a in range(self.n_actions)]))
-            policy[state] = best_action
-        return policy
+    # def get_policy(self) -> Dict[int, int]:
+    #     """Returns the current greedy policy."""
+    #     policy = {}
+    #     for (state, _), _ in self.Q.items():
+    #         best_action = int(np.argmax([self.Q[(state, a)] for a in range(self.n_actions)]))
+    #         policy[state] = best_action
+    #     return policy
 
-    def save_policy(self, path: str):
-        """Saves the policy to a file."""
-        np.save(path, self.get_policy())
+    # def save_policy(self, path: str):
+    #     """Saves the policy to a file."""
+    #     np.save(path, self.get_policy())
 
-    def load_policy(self, path: str):
-        """Loads a policy from a file."""
-        self.policy = np.load(path, allow_pickle=True).item()
+    # def load_policy(self, path: str):
+    #     """Loads a policy from a file."""
+    #     self.policy = np.load(path, allow_pickle=True).item()
