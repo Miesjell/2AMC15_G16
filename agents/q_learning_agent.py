@@ -6,19 +6,25 @@ from agents import BaseAgent
 class QLearningAgent(BaseAgent):
     def __init__(
         self,
-        alpha=0.1,
+        env,
+        alpha=0.8,
         gamma=0.95,
-        epsilon=0.8,
+        epsilon=0.5,
         epsilon_min=0.05,
-        epsilon_decay=0.9995,
+        epsilon_decay=0.995,
         num_actions=4,
+        alpha_min=0.01,
+        alpha_decay=0.999999
     ):
+        self.env = env
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.num_actions = num_actions
+        self.alpha_min = alpha_min
+        self.alpha_decay = alpha_decay
         self.q_table = {}
 
         self.prev_state = None
@@ -56,5 +62,6 @@ class QLearningAgent(BaseAgent):
         td_error = td_target - prev_q[self.prev_action]
         prev_q[self.prev_action] += self.alpha * td_error
 
-        # Decay epsilon
+        # Decay epsilon & alpha
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        self.alpha = max(self.alpha_min, self.alpha * self.alpha_decay)
