@@ -11,10 +11,10 @@ ACTIONS = {
     3: (1, 0)    # Right
 }
 
-class ValueIterationAgentTjerk(BaseAgent):
+class ValueIterationAgent(BaseAgent):
     def __init__(self, env):
         """
-        Initializes the ValueIterationAgentTjerk using an Environment instance.
+        Initializes the ValueIterationAgent using an Environment instance.
         """
         
         super().__init__()
