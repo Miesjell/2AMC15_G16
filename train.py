@@ -139,29 +139,47 @@ def main(
 
         if agent.__str__() == "MC_Agent":
             # Corrected and updated training loop: Run 'iters' full episodes
-            for episode in trange(episodes, desc="Training Episodes"):
+            for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
                 state = env.reset(agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
                 step_count = 0
-                episode = []
+                episode_data = []
                 
                 while True:
                     action = agent.take_action(state)
                     next_state, reward, terminated, info = env.step(action)
-                    episode.append((state, info["actual_action"], reward))
+                    episode_data.append((state, info["actual_action"], reward))
                     step_count += 1
                     if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
                     
                         #if info.get("target_reached", False):   # only successful eps
-                        agent.update(episode)
+                        agent.update(episode_data)
                         break
 
                     state = next_state
                 agent.epsilon = max(0.05, agent.epsilon * 0.995)
 
-            # Evaluate the agent
-            Environment.evaluate_agent(grid, agent, iters, sigma,
-                                    random_seed=random_seed,
-                                    agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+                # Evaluate the agent and append simple total return and episode number to lists. Evaluate per x episodes!
+                Environment.evaluate_agent(grid, agent, iters, sigma,
+                                        random_seed=random_seed,
+                                        agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+                if episode % 50 == 0:
+                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
+                    episode_returns.append(total_return)
+                    episode_numbers.append(episode + 1)
+
+            # Plot learning curve
+            plt.plot(episode_numbers, episode_returns, label="Episode Return")
+            plt.xlabel("Episode")
+            plt.ylabel("Total Discounted Return")
+            plt.title("Learning Curve")
+            plt.grid(True)
+            # Save plot to file
+            grid_dir = Path("learning_curves") / grid.stem
+            grid_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Add timestamp to filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
             
         else:
 
@@ -169,13 +187,18 @@ def main(
             state = env.reset()
             for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
                 state = env.reset()  # Always reset the environment to initial state
+                if hasattr(agent, "reset"):
+                    agent.reset()
+
                 for _ in range(iters):
                     action = agent.take_action(state)
                     state, reward, terminated, info = env.step(action)
                     agent.update(state, reward, info["actual_action"])
-                    # Evaluate the agent and append TDR and episode number to lists. Evaluate per x episodes!
+                    if terminated:
+                        break
 
-                if episode % 10 == 0:
+                # Evaluate the agent and append simple total return and episode number to lists. Evaluate per x episodes!
+                if episode % 50 == 0:
                     total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
                     episode_returns.append(total_return)
                     episode_numbers.append(episode + 1)
@@ -183,7 +206,7 @@ def main(
                 agent.prev_state = None
                 agent.prev_action = None
 
-                            # Plot learning curve
+            # Plot learning curve
             plt.plot(episode_numbers, episode_returns, label="Episode Return")
             plt.xlabel("Episode")
             plt.ylabel("Total Discounted Return")
