@@ -9,7 +9,7 @@ from datetime import datetime
 agents = ["MonteCarloAgent", "QLearningAgent", "ValueIterationAgent"]
 grid_path = "grid_configs/A1_grid.npy"
 episodes = 1000
-sigma = 0.1
+sigma = 0.5
 results_dir = Path("learning_curves")
 
 # Ensure results directory exists

@@ -22,7 +22,7 @@ class ValueIterationAgent(BaseAgent):
         self.grid = Grid.load_grid(env.grid_fp).cells
         self.gamma = getattr(env, 'gamma', 0.9)
         self.theta = getattr(env, 'theta', 1e-4)
-        self.sigma = getattr(env, 'sigma', 0.1)
+        self.sigma = getattr(env, 'sigma', 0.2)
         self.V = np.zeros(self.grid.shape)
         self.policy = np.zeros(self.grid.shape, dtype=int)
         self._value_iteration()
