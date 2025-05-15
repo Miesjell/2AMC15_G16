@@ -20,7 +20,7 @@ class ValueIterationAgent(BaseAgent):
         super().__init__()
         self.env = env
         self.grid = Grid.load_grid(env.grid_fp).cells
-        self.gamma = getattr(env, 'gamma', 0.9)
+        self.gamma = getattr(env, 'gamma', 0.8)
         self.theta = getattr(env, 'theta', 1e-4)
         self.sigma = getattr(env, 'sigma', 0.2)
         self.V = np.zeros(self.grid.shape)
@@ -36,12 +36,12 @@ class ValueIterationAgent(BaseAgent):
     def reward(self, pos):
         val = self.grid[pos]
         if val == 0:
-            return -0.01
+            return -1
         elif val == 3:
-            return 5
+            return 10
         elif val in [1, 2]:
-            return -0.05
-        return -0.01
+            return -5
+        return -1
 
     def _get_transition_probs(self, intended_action):
         other_actions = [a for a in ACTION_LIST if a != intended_action]
