@@ -10,6 +10,7 @@ import re
 import matplotlib.pyplot as plt
 from tqdm import trange
 from datetime import datetime
+import csv
 
 try:
     from world import Environment
@@ -170,7 +171,7 @@ def main(
             # Plot learning curve
             plt.plot(episode_numbers, episode_returns, label="Episode Return")
             plt.xlabel("Episode")
-            plt.ylabel("Total Discounted Return")
+            plt.ylabel("Simple Total Return")
             plt.title("Learning Curve")
             plt.grid(True)
             # Save plot to file
@@ -180,6 +181,14 @@ def main(
             # Add timestamp to filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
+
+            # Save data to CSV to make one learning curve with multiple agents later
+            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["episode", "return"])
+                writer.writerows(zip(episode_numbers, episode_returns))
             
         else:
 
@@ -209,7 +218,7 @@ def main(
             # Plot learning curve
             plt.plot(episode_numbers, episode_returns, label="Episode Return")
             plt.xlabel("Episode")
-            plt.ylabel("Total Discounted Return")
+            plt.ylabel("Simple Total Return")
             plt.title("Learning Curve")
             plt.grid(True)
             # Save plot to file
@@ -219,6 +228,14 @@ def main(
             # Add timestamp to filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
+            
+            # Save data to CSV to make one learning curve with multiple agents later
+            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["episode", "return"])
+                writer.writerows(zip(episode_numbers, episode_returns))
 
 if __name__ == '__main__':
     args = parse_args()
