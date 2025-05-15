@@ -36,12 +36,12 @@ class ValueIterationAgent(BaseAgent):
     def reward(self, pos):
         val = self.grid[pos]
         if val == 0:
-            return -1
+            return -0.01
         elif val == 3:
-            return 10
+            return 5
         elif val in [1, 2]:
-            return -5
-        return -1
+            return -0.05
+        return -0.01
 
     def _get_transition_probs(self, intended_action):
         other_actions = [a for a in ACTION_LIST if a != intended_action]
