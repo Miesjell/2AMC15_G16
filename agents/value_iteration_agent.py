@@ -36,12 +36,34 @@ class ValueIterationAgent(BaseAgent):
     def reward(self, pos):
         val = self.grid[pos]
         if val == 0:
-            return -1
+            return -0.01
         elif val == 3:
-            return 10
+            return 5
         elif val in [1, 2]:
-            return -5
+            return -0.05
         return -1
+    
+    # def reward(self, pos):
+    #     """Reward function that considers distance to nearest target."""
+    #     # Base rewards for different tile types
+    #     match self.grid[pos]:
+    #         case 0:  # Empty tile
+    #             base_reward = -0.01
+    #         case 1 | 2:  # Wall or obstacle
+    #             return -0.05
+    #         case 3:  # Target tile
+    #             return 5.0
+    #         case _:
+    #             raise ValueError(f"Unexpected grid value {self.grid[pos]} at {pos}")
+    #     # find targets
+    #     target_rows, target_cols = np.where(self.grid == 3)
+    #     if target_rows.size == 0:
+    #         return base_reward
+    #     # compute min manhattan
+    #     drows = np.abs(pos[0] - target_rows)
+    #     dcols = np.abs(pos[1] - target_cols)
+    #     min_dist = np.min(drows + dcols)
+    #     return base_reward - 0.01 * min_dist
 
     def _get_transition_probs(self, intended_action):
         other_actions = [a for a in ACTION_LIST if a != intended_action]
