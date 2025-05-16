@@ -13,11 +13,15 @@ We extended the original environment with the following contributions:
 - **Modified `train.py`**:
   - Added support for extra parameters like `--episodes` for training length.
   - Exports **learning curve data** as CSV and plots PNG images under `learning_curves/`.
+  - Automatically selects appropriate start positions based on the grid file
+  - Periodically evaluates and records agent performance (every 50 episodes)
 - **New script: `compare.py`**:
   - Automates training all three agents.
   - Produces a combined learning curve plot for visual comparison.
+- **Modified  `environment.py`**
+  - Customizable **reward function**
 - **Experimentation-ready**:
-  - Configurable grid environments (e.g., `A1_grid.npy`).
+  - Configurable grid environments (e.g., `Open_Field.npy`).
   - Adjustable parameters like discount factor `gamma`, stochasticity `sigma`, and `episodes`.
 
 ---
@@ -49,6 +53,7 @@ We extended the original environment with the following contributions:
    This will generate:
    - Console output of the training process
    - A CSV log and a PNG learning curve under `learning_curves/`
+   - The modified `train.py` supports additional command-line arguments beyond the original
 
 5. **Run all agents and compare**:
    ```bash
@@ -61,41 +66,17 @@ We extended the original environment with the following contributions:
    episodes = 501
    sigma = 0.1
    ```
-
 ---
 
-##  Modified Parameters
 
-- Customizable **reward function**:
-  - The default reward function has been modified to:
-    - `-0.01` for moving to an empty tile
-    - `-0.05` for hitting a wall or obstacle
-    - `+5` for reaching a target
-  - Users can pass their own reward function via the `reward_fn` parameter to the `Environment` constructor for custom experimentation.
-
-The `train.py` script was significantly extended:
-
-- Adds `--episodes` for training by episodes (rather than fixed iterations)
-- Logs learning curves as both `.csv` and `.png` files in the `learning_curves/` folder
-- Automatically selects appropriate start positions based on the grid file
-- Periodically evaluates and records agent performance (every 50 episodes)
-
-The modified `train.py` supports additional command-line arguments beyond the original repo:
-
-```bash
-usage: train.py [--agent AGENT] [--episodes EPISODES] [--sigma SIGMA] ...
-```
----
-
-##  Experimentation
+##  Experiments Instruction
 
 You are encouraged to test how different setups affect learning:
 - Different **grid maps**: swap in other `.npy` files under `grid_configs/`
-- **Discount factor** `gamma`: change this within the agent definition
-- **Stochasticity** `sigma`: pass via `--sigma` argument
-- **Episode count**: change via `--episodes` or in `compare.py`
-
-- **This part should be more specific, TBC**
+- **Discount factor** `gamma`: change this within the agent definition `agents/`
+- **Stochasticity** `sigma`: pass via `--sigma` argument to `train.py` or in `compare.py`
+- **Episode count**: pass via `--episodes` argument to `train.py` or in `compare.py`
+- **Reward Function**: modify the `reward_fn` in `environment.py`
 ---
 
 ##  Project Structure (New Files Only)
@@ -112,6 +93,7 @@ learning_curves/
 
 compare.py  # Script to train and compare all agents
 train.py    # Modified to accept more parameters and plot learning curves
+environment.py   # Modified to have new reward function
 ```
 
 ---
