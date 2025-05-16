@@ -181,7 +181,7 @@ def main(
                                         random_seed=random_seed,
                                         agent_start_pos=startPos,)
                 if episode % 50 == 0:
-                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
+                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=startPos)
                     episode_returns.append(total_return)
                     episode_numbers.append(episode + 1)
 
@@ -225,7 +225,7 @@ def main(
 
                 # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
                 if episode % 50 == 0:
-                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
+                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=startPos)
                     episode_returns.append(total_return)
                     episode_numbers.append(episode + 1)
 
