@@ -77,7 +77,7 @@ You are encouraged to test how different setups affect learning:
 - **Discount factor** `gamma`: change this within the agent definition `agents/`
 - **Stochasticity** `sigma`: pass via `--sigma` argument to `train.py` or in `compare.py`
 - **Episode count**: pass via `--episodes` argument to `train.py` or in `compare.py`
-- **Reward Function**: modify the `reward_fn` in `environment.py`
+- **Reward Function**: uncomment the reward function that you want in `world/environment.py`
 ---
 
 ##  Project Structure (New Files Only)
