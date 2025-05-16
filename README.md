@@ -14,7 +14,7 @@ We extended the original environment with the following contributions:
   - Added support for extra parameters like `--episodes` for training length.
   - Exports **learning curve data** as CSV and plots PNG images under `learning_curves/`.
   - Automatically selects appropriate start positions based on the grid file
-  - Periodically evaluates and records agent performance (every 50 episodes)
+  - Periodically evaluates and records agent performance
 - **New script: `compare.py`**:
   - Automates training all three agents.
   - Produces a combined learning curve plot for visual comparison.
@@ -53,13 +53,14 @@ We extended the original environment with the following contributions:
    This will generate:
    - Console output of the training process
    - A CSV log and a PNG learning curve under `learning_curves/`
-   - The modified `train.py` supports additional command-line arguments beyond the original
 
 5. **Run all agents and compare**:
    ```bash
    python compare.py
    ```
-
+    This will generate:
+   - Comparable learning curves of all three algorithms under `learning_curves/`
+   
    You can adjust settings directly in `compare.py`, such as:
    ```python
    grid_path = "grid_configs/A1_grid.npy"
