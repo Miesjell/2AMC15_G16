@@ -288,33 +288,73 @@ class Environment:
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:
-        """This is a very simple reward function. Feel free to adjust it.
-        Any custom reward function must also follow the same signature, meaning
-        it must be written like `reward_name(grid, temp_agent_pos)`.
-
+        """Reward function that considers distance to nearest target.
+        
         Args:
-            grid: The grid the agent is moving on, in case that is needed by
-                the reward function.
-            agent_pos: The position the agent is moving to.
-
+            grid: The grid the agent is moving on
+            agent_pos: The position the agent is moving to
+            
         Returns:
-            A single floating point value representing the reward for a given
-            action.
+            A floating point value representing the reward
         """
-
+        # Base rewards for different tile types
         match grid[agent_pos]:
-            case 0:  # Moved to an empty tile
-                reward = -0.01 # could be -0.01 or -0.1
-            case 1 | 2:  # Moved to a wall or obstacle
-                reward = -0.05 # coudl be -0.05 or -5
-                pass
-            case 3:  # Moved to a target tile
-                reward = 5 # could be 5 or 10
-                # "Illegal move"
+            case 0:  # Empty tile
+                base_reward = -0.01
+            case 1 | 2:  # Wall or obstacle
+                return -0.05  # Return immediately for invalid moves
+            case 3:  # Target tile
+                return 5.0  # Return immediately for reaching target
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
-                                 f"at position {agent_pos}")
-        return reward
+                                f"at position {agent_pos}")
+        
+        # Find all target positions
+        target_positions = np.where(grid == 3)
+        if len(target_positions[0]) == 0:
+            return base_reward
+        
+        # Calculate Manhattan distances using vectorized operations
+        target_rows, target_cols = target_positions
+        row_distances = np.abs(agent_pos[0] - target_rows)
+        col_distances = np.abs(agent_pos[1] - target_cols)
+        manhattan_distances = row_distances + col_distances
+        
+        # Find minimum distance and calculate proximity reward
+        min_distance = np.min(manhattan_distances)
+        proximity_reward = -0.1 * min_distance
+        
+        return base_reward + proximity_reward
+
+    # @staticmethod
+    # def _default_reward_function(grid, agent_pos) -> float:
+    #     """This is a very simple reward function. Feel free to adjust it.
+    #     Any custom reward function must also follow the same signature, meaning
+    #     it must be written like `reward_name(grid, temp_agent_pos)`.
+
+    #     Args:
+    #         grid: The grid the agent is moving on, in case that is needed by
+    #             the reward function.
+    #         agent_pos: The position the agent is moving to.
+
+    #     Returns:
+    #         A single floating point value representing the reward for a given
+    #         action.
+    #     """
+
+    #     match grid[agent_pos]:
+    #         case 0:  # Moved to an empty tile
+    #             reward = -0.01 # could be -0.01 or -0.1
+    #         case 1 | 2:  # Moved to a wall or obstacle
+    #             reward = -0.05 # coudl be -0.05 or -5
+    #             pass
+    #         case 3:  # Moved to a target tile
+    #             reward = 5 # could be 5 or 10
+    #             # "Illegal move"
+    #         case _:
+    #             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
+    #                              f"at position {agent_pos}")
+    #     return reward
 
     @staticmethod
     def evaluate_agent(grid_fp: Path,
