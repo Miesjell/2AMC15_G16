@@ -158,7 +158,7 @@ def main(
         if agent.__str__() == "MC_Agent":
             # Corrected and updated training loop: Run 'iters' full episodes
             for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
-                state = env.reset(agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+                state = env.reset(agent_start_pos=startPos,)
                 step_count = 0
                 episode_data = []
                 
@@ -179,7 +179,7 @@ def main(
                 # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
                 Environment.evaluate_agent(grid, agent, iters, sigma,
                                         random_seed=random_seed,
-                                        agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
+                                        agent_start_pos=startPos,)
                 if episode % 50 == 0:
                     total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
                     episode_returns.append(total_return)
