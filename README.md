@@ -1,108 +1,125 @@
+# Extended Reinforcement Learning Agents — DIC 2AMC15-2025 Project
 
-Welcome to Data Intelligence Challenge-2AMC15!
-This is the repository containing the challenge environment code.
+This repository is based on the official [Data Intelligence Challenge 2AMC15-2025 repository](https://github.com/DataIntelligenceChallenge/2AMC15-2025) and contains our extended work for exploring and comparing various reinforcement learning algorithms in a grid world environment.
 
-## Quickstart
+##  What's New
 
-1. Create a virtual environment for this course with Python >= 3.10. Using conda, you can do: `conda create -n dic2025 python=3.11`. Use `conda activate dic2025` to activate it `conda deactivate` to deactivate it.
-2. Clone this repository into the local directory you prefer `git clone https://github.com/DataIntelligenceChallenge/2AMC15-2025.git`.
-3. Install the required packages `pip install -r requirements.txt`. Now, you are ready to use the simulation environment! :partying_face:	
-4. Run `$ python train.py grid_configs/example_grid.npy` to start training!
+We extended the original environment with the following contributions:
 
-`train.py` is just an example training script. Inside this file, initialize the agent you want to train and evaluate. Feel free to modify it as necessary. Its usage is:
+- **New agents** implemented under the `agents/` folder:
+  - `MonteCarloAgent`
+  - `QLearningAgent`
+  - `ValueIterationAgent`
+- **Modified `train.py`**:
+  - Added support for extra parameters like `--episodes` for training length.
+  - Exports **learning curve data** as CSV and plots PNG images under `learning_curves/`.
+- **New script: `compare.py`**:
+  - Automates training all three agents.
+  - Produces a combined learning curve plot for visual comparison.
+- **Experimentation-ready**:
+  - Configurable grid environments (e.g., `A1_grid.npy`).
+  - Adjustable parameters like discount factor `gamma`, stochasticity `sigma`, and `episodes`.
+
+---
+
+##  Quickstart (with extensions)
+
+1. **Set up the environment**:
+   ```bash
+   conda create -n dic2025 python=3.11
+   conda activate dic2025
+   ```
+
+2. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Miesjell/2AMC15_G16.git
+   cd 2AMC15_G16
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Train a specific agent**:
+   ```bash
+   python train.py grid_configs/A1_grid.npy --agent QLearningAgent --episodes 500 --sigma 0.1
+   ```
+
+   This will generate:
+   - Console output of the training process
+   - A CSV log and a PNG learning curve under `learning_curves/`
+
+5. **Run all agents and compare**:
+   ```bash
+   python compare.py
+   ```
+
+   You can adjust settings directly in `compare.py`, such as:
+   ```python
+   grid_path = "grid_configs/A1_grid.npy"
+   episodes = 501
+   sigma = 0.1
+   ```
+
+---
+
+##  Modified Parameters
+
+- Customizable **reward function**:
+  - The default reward function has been modified to:
+    - `-0.01` for moving to an empty tile
+    - `-0.05` for hitting a wall or obstacle
+    - `+5` for reaching a target
+  - Users can pass their own reward function via the `reward_fn` parameter to the `Environment` constructor for custom experimentation.
+
+The `train.py` script was significantly extended:
+
+- Adds `--episodes` for training by episodes (rather than fixed iterations)
+- Logs learning curves as both `.csv` and `.png` files in the `learning_curves/` folder
+- Automatically selects appropriate start positions based on the grid file
+- Periodically evaluates and records agent performance (every 50 episodes)
+
+The modified `train.py` supports additional command-line arguments beyond the original repo:
 
 ```bash
-usage: train.py [-h] [--no_gui] [--sigma SIGMA] [--fps FPS] [--iter ITER]
-                [--random_seed RANDOM_SEED] 
-                GRID [GRID ...]
+usage: train.py [--agent AGENT] [--episodes EPISODES] [--sigma SIGMA] ...
+```
+---
 
-DIC Reinforcement Learning Trainer.
+##  Experimentation
 
-positional arguments:
-  GRID                  Paths to the grid file to use. There can be more than
-                        one.
-options:
-  -h, --help                 show this help message and exit
-  --no_gui                   Disables rendering to train faster (boolean)
-  --sigma SIGMA              Sigma value for the stochasticity of the environment. (float, default=0.1, should be in [0, 1])
-  --fps FPS                  Frames per second to render at. Only used if no_gui is not set. (int, default=30)
-  --iter ITER                Number of iterations to go through. Should be integer. (int, default=1000)
-  --random_seed RANDOM_SEED  Random seed value for the environment. (int, default=0)
+You are encouraged to test how different setups affect learning:
+- Different **grid maps**: swap in other `.npy` files under `grid_configs/`
+- **Discount factor** `gamma`: change this within the agent definition
+- **Stochasticity** `sigma`: pass via `--sigma` argument
+- **Episode count**: change via `--episodes` or in `compare.py`
+
+- **This part should be more specific, TBC**
+---
+
+---
+
+##  Acknowledgements
+
+This project builds upon the environment and code structure provided by the [official 2AMC15-2025 repository](https://github.com/DataIntelligenceChallenge/2AMC15-2025).
+
+---
+
+##  Project Structure (New Files Only)
+
+```
+agents/
+├── MonteCarloAgent.py
+├── QLearningAgent.py
+├── ValueIterationAgent.py
+
+learning_curves/
+├── QLearningAgent_curve.csv
+├── compare_learning_curves_*.png
+
+compare.py  # Script to train and compare all agents
+train.py    # Modified to accept more parameters and plot learning curves
 ```
 
-## Code guide
-
-The code is made up of 2 modules: 
-
-1. `agent`
-2. `world`
-
-### The `agent` module
-
-The `agent` module contains the `BaseAgent` class as well as some benchmark agents you may want to test against.
-
-The `BaseAgent` is an abstract class and all RL agents for DIC must inherit from/implement it.
-If you know/understand class inheritence, skip the following section:
-
-#### `BaseAgent` as an abstract class
-Here you can find an explanation about abstract classes [Geeks for Geeks](https://www.geeksforgeeks.org/abstract-classes-in-python/).
-
-Think of this like how all models in PyTorch start like 
-
-```python
-class NewModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-    ...
-```
-
-In this case, `NewModel` inherits from `nn.Module`, which gives it the ability to do back propagation, store parameters, etc. without you having to manually code that every time.
-It also ensures that every class that inherits from `nn.Module` contains _at least_ the `forward()` method, which allows a forward pass to actually happen.
-
-In the case of your RL agent, inheriting from `BaseAgent` guarantees that your agent implements `update()` and `take_action()`.
-This ensures that no matter what RL agent you make and however you code it, the environment and training code can always interact with it in the same way.
-Check out the benchmark agents to see examples.
-
-### The `world` module
-
-The world module contains:
-1. `grid_creator.py`
-2. `environment.py`
-3. `grid.py`
-4. `gui.py`
-
-#### Grid creator
-Run this file to create new grids.
-
-```bash
-$ python grid_creator.py
-```
-
-This will start up a web server where you create new grids, of different sizes with various elements arrangements.
-To view the grid creator itself, go to `127.0.0.1:5000`.
-All levels will be saved to the `grid_configs/` directory.
-
-
-#### The Environment
-
-The `Environment` is very important because it contains everything we hold dear, including ourselves [^1].
-It is also the name of the class which our RL agent will act within. Most of the action happens in there.
-
-The main interaction with `Environment` is through the methods:
-
-- `Environment()` to initialize the environment
-- `reset()` to reset the environment
-- `step()` to actually take a time step with the environment
-- `Environment().evaluate_agent()` to evaluate the agent after training.
-
-[^1]: In case you missed it, this sentence is a joke. Please do not write all your code in the `Environment` class.
-
-#### The Grid
-
-The `Grid` class is the the actual representation of the world on which the agent moves. It is a 2D Numpy array.
-
-#### The GUI
-
-The Graphical User Interface provides a way for you to actually see what the RL agent is doing.
-While performant and written using PyGame, it is still about 1300x slower than not running a GUI.
-Because of this, we recommend using it only while testing/debugging and not while training.
+---
