@@ -94,7 +94,7 @@ learning_curves/
 
 compare.py  # Script to train and compare all agents
 train.py    # Modified to accept more parameters and plot learning curves
-environment.py   # Modified to have new reward function
+environment.py   # Modified reward function
 ```
 
 ---
