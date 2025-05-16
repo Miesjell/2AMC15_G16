@@ -121,6 +121,23 @@ def main(
     """Main loop of the program."""
 
     for grid in grid_paths:
+
+
+        startPos = None
+
+        # Setting proper start positions for each grid
+        if grid.name == "A1_grid.npy":
+            startPos = [3,11]
+        elif grid.name == "Maze_Grid.npy":
+            startPos = [1,5]
+        elif grid.name == "Risk_Grid.npy":
+            startPos = [2,8]
+        elif grid.name == "Open_Field.npy":
+            startPos = [2,7]
+        elif grid.name == "Open_Field_2.npy":
+            startPos = [2,7]
+        
+
         # Set up the environment
         env = Environment(
             grid,
@@ -128,7 +145,7 @@ def main(
             sigma=sigma,
             target_fps=fps,
             random_seed=random_seed,
-            agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,
+            agent_start_pos = startPos,
         )
 
         episode_numbers = []
@@ -159,7 +176,7 @@ def main(
                     state = next_state
                 agent.epsilon = max(0.05, agent.epsilon * 0.995)
 
-                # Evaluate the agent and append simple total return and episode number to lists. Evaluate per x episodes!
+                # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
                 Environment.evaluate_agent(grid, agent, iters, sigma,
                                         random_seed=random_seed,
                                         agent_start_pos=[3, 11] if grid.name == "A1_grid.npy" else None,)
@@ -171,7 +188,7 @@ def main(
             # Plot learning curve
             plt.plot(episode_numbers, episode_returns, label="Episode Return")
             plt.xlabel("Episode")
-            plt.ylabel("Simple Total Return")
+            plt.ylabel("Simple Total Reward")
             plt.title("Learning Curve")
             plt.grid(True)
             # Save plot to file
@@ -206,7 +223,7 @@ def main(
                     if terminated:
                         break
 
-                # Evaluate the agent and append simple total return and episode number to lists. Evaluate per x episodes!
+                # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
                 if episode % 50 == 0:
                     total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(3, 11) if grid.name == "A1_grid.npy" else None)
                     episode_returns.append(total_return)
@@ -218,7 +235,7 @@ def main(
             # Plot learning curve
             plt.plot(episode_numbers, episode_returns, label="Episode Return")
             plt.xlabel("Episode")
-            plt.ylabel("Simple Total Return")
+            plt.ylabel("Simple Total Reward")
             plt.title("Learning Curve")
             plt.grid(True)
             # Save plot to file

@@ -49,7 +49,7 @@ for agent, df in learning_curves.items():
 
 plt.title("Learning Curves for All Agents")
 plt.xlabel("Episode")
-plt.ylabel("Simple Total Return")
+plt.ylabel("Simple Total Reward")
 plt.grid(True)
 plt.legend()
 
