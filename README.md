@@ -98,14 +98,6 @@ You are encouraged to test how different setups affect learning:
 - **This part should be more specific, TBC**
 ---
 
----
-
-##  Acknowledgements
-
-This project builds upon the environment and code structure provided by the [official 2AMC15-2025 repository](https://github.com/DataIntelligenceChallenge/2AMC15-2025).
-
----
-
 ##  Project Structure (New Files Only)
 
 ```
