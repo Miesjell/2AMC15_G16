@@ -8,7 +8,7 @@ class QLearningAgent(BaseAgent):
         self,
         env,
         alpha=0.1,
-        gamma=0.8, # for default use
+        gamma=0.99, # for default use
         epsilon=0.8,
         epsilon_min=0.05,
         epsilon_decay=0.9995,

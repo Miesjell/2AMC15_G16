@@ -11,7 +11,7 @@ class MonteCarloAgent(BaseAgent):
         env,
         n_actions: int = 4,
         epsilon: float = 1, # Start initially with epsilon = 1 such that we have high exploration
-        gamma: float = 0.8, # for default use
+        gamma: float = 0.99, # for default use
         first_visit: bool = True,
     ):
         self.env = env

@@ -7,8 +7,8 @@ from datetime import datetime
 
 # Define training settings
 agents = ["MonteCarloAgent", "QLearningAgent", "ValueIterationAgent"]
-grid_path = "grid_configs/A1_grid.npy"
-episodes = 1000
+grid_path = "grid_configs/Maze_Grid.npy"
+episodes = 500
 sigma = 0.1
 results_dir = Path("learning_curves")
 
