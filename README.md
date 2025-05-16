@@ -29,10 +29,12 @@ We extended the original environment with the following contributions:
 ##  Quickstart (with extensions)
 
 1. **Set up the environment**:
+  note: skip this this step if using [uv](https://docs.astral.sh/uv/)
    ```bash
    conda create -n dic2025 python=3.11
    conda activate dic2025
    ```
+  
 
 2. **Clone the repository**:
    ```bash
@@ -43,6 +45,10 @@ We extended the original environment with the following contributions:
 3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
+   ```
+   or alternatively using [uv](https://docs.astral.sh/uv/)
+   ```bash
+   uv sync
    ```
 
 4. **Train a specific agent**:
