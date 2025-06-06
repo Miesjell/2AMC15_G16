@@ -38,8 +38,7 @@ We extended the original environment with the following contributions:
 
 2. **Clone the repository**:
    ```bash
-   git clone https://github.com/Miesjell/2AMC15_G16.git
-   cd 2AMC15_G16
+  Wasn't anonymous hihi
    ```
 
 3. **Install dependencies**:
