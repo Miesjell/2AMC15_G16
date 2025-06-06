@@ -142,17 +142,13 @@ class GUI:
     def _draw_agent(self, surface: pygame.Surface,
                     agent_pos: list[tuple[int, int]],
                     x_offset: int, y_offset: int):
-        """Draws the agent on the grid world."""
 
-        # Draw the agent as a gray circle
-        x = (agent_pos[0] * self.scalar) + x_offset
-        y = (agent_pos[1] * self.scalar) + y_offset
-        r = int(self.scalar / 2) - 8
-        rect = pygame.Rect(x + 4, y + 4, self.scalar - 8, self.scalar - 8)
-        gfxdraw.aacircle(surface, rect.centerx, rect.centery, r,
-                            (0, 0, 102))
-        gfxdraw.filled_circle(surface, rect.centerx, rect.centery, r,
-                                (0, 0, 102))
+        x = float(agent_pos[0]) * self.scalar + x_offset
+        y = float(agent_pos[1]) * self.scalar + y_offset
+        r = int(self.scalar / 2.5)
+
+        gfxdraw.aacircle(surface, int(x), int(y), r, (0, 0, 102))
+        gfxdraw.filled_circle(surface, int(x), int(y), r, (0, 0, 102))
 
     def _draw_info(self, surface) -> tuple[pygame.Rect, pygame.Rect]:
         """Draws the info panel on the surface.
@@ -208,7 +204,7 @@ class GUI:
         return pause_rect, step_rect
 
 
-    def render(self, grid_cells: np.ndarray, agent_pos: tuple[int, int],
+    def render(self, grid_cells: np.ndarray, agent_pos: tuple[float, float],
                info: dict[str, any], reward: int, is_single_step: bool = False):
         """Render the environment.
 

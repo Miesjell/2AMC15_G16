@@ -43,28 +43,6 @@ class ValueIterationAgent(BaseAgent):
             return -0.05
         return -1
     
-    # def reward(self, pos):
-    #     """Reward function that considers distance to nearest target."""
-    #     # Base rewards for different tile types
-    #     match self.grid[pos]:
-    #         case 0:  # Empty tile
-    #             base_reward = -0.01
-    #         case 1 | 2:  # Wall or obstacle
-    #             return -0.05
-    #         case 3:  # Target tile
-    #             return 5.0
-    #         case _:
-    #             raise ValueError(f"Unexpected grid value {self.grid[pos]} at {pos}")
-    #     # find targets
-    #     target_rows, target_cols = np.where(self.grid == 3)
-    #     if target_rows.size == 0:
-    #         return base_reward
-    #     # compute min manhattan
-    #     drows = np.abs(pos[0] - target_rows)
-    #     dcols = np.abs(pos[1] - target_cols)
-    #     min_dist = np.min(drows + dcols)
-    #     return base_reward - 0.01 * min_dist
-
     def _get_transition_probs(self, intended_action):
         other_actions = [a for a in ACTION_LIST if a != intended_action]
         p_intended = 1 - self.sigma
@@ -101,8 +79,10 @@ class ValueIterationAgent(BaseAgent):
             if delta < self.theta:
                 break
 
-    def take_action(self, state: tuple[int, int]) -> int:
-        return self.policy[state]
+    def take_action(self, state: np.ndarray) -> int:
+        discrete_state = tuple(np.floor(state).astype(int))
+        return self.policy[discrete_state]
+
 
     def update(self, state: tuple[int, int], reward: float, action: int):
         pass

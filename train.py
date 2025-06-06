@@ -14,6 +14,8 @@ import csv
 
 try:
     from world import Environment
+    from world.continuousEnvironment import ContinuousEnvironment
+
     from agents.random_agent import RandomAgent
 except ModuleNotFoundError:
     from os import path
@@ -26,6 +28,8 @@ except ModuleNotFoundError:
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
+    from world.continuousEnvironment import ContinuousEnvironment
+
     from agents.random_agent import RandomAgent
 
 
@@ -139,7 +143,7 @@ def main(
         
 
         # Set up the environment
-        env = Environment(
+        env = ContinuousEnvironment(
             grid,
             no_gui,
             sigma=sigma,
