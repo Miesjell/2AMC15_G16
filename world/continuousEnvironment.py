@@ -78,6 +78,7 @@ class ContinuousEnvironment:
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
+        self.agent_size = 1
               
         # Set up reward function
         if reward_fn is None:
@@ -188,6 +189,25 @@ class ContinuousEnvironment:
                 self.gui.close()
 
         return self.agent_pos
+    
+    def _check_agent_size(self, agent_pos: tuple[float, float]) -> bool:
+        """Checks if the agent's size fits within the grid cell."""
+        grid_pos = tuple(np.floor(agent_pos).astype(int))
+        half_size = self.agent_size / 2
+
+        # Define the agent's bounding box
+        min_x = agent_pos[0] - half_size
+        max_x = agent_pos[0] + half_size
+        min_y = agent_pos[1] - half_size
+        max_y = agent_pos[1] + half_size
+
+        # Check if the bounding box overlaps any obstacles
+        for x in np.arange(min_x, max_x, 0.1):  # Step size can be adjusted
+            for y in np.arange(min_y, max_y, 0.1):
+                grid_pos = tuple(np.floor([x, y]).astype(int))
+                if self.grid[grid_pos] != 0:  # Not an empty tile
+                    return False
+        return True
 
     def _move_agent(self, new_pos: tuple[int, int]):
         """Moves the agent, if possible and updates the 
@@ -202,23 +222,26 @@ class ContinuousEnvironment:
 
         match self.grid[grid_pos]:
             case 0:  # Moved to an empty tile
-                self.agent_pos = new_pos
-                self.info["agent_moved"] = True
-                self.world_stats["total_agent_moves"] += 1
+                if self._check_agent_size(new_pos):
+                    self.agent_pos = new_pos
+                    self.info["agent_moved"] = True
+                    self.world_stats["total_agent_moves"] += 1
             case 1 | 2:  # Moved to a wall or obstacle
-                self.world_stats["total_failed_moves"] += 1
-                self.info["agent_moved"] = False
-                pass
+                if self._check_agent_size(new_pos):
+                    self.world_stats["total_failed_moves"] += 1
+                    self.info["agent_moved"] = False
+                    pass
             case 3:  # Moved to a target tile
-                self.agent_pos = new_pos
-                self.grid[grid_pos] = 0
-                if np.sum(self.grid == 3) == 0:
-                    self.terminal_state = True
-                self.info["target_reached"] = True
-                self.world_stats["total_targets_reached"] += 1
-                self.info["agent_moved"] = True
-                self.world_stats["total_agent_moves"] += 1
-                # Otherwise, the agent can't move and nothing happens
+                if self._check_agent_size(new_pos):
+                    self.agent_pos = new_pos
+                    self.grid[grid_pos] = 0
+                    if np.sum(self.grid == 3) == 0:
+                        self.terminal_state = True
+                    self.info["target_reached"] = True
+                    self.world_stats["total_targets_reached"] += 1
+                    self.info["agent_moved"] = True
+                    self.world_stats["total_agent_moves"] += 1
+                    # Otherwise, the agent can't move and nothing happens
             case _:
                 raise ValueError(f"Grid is badly formed. It has a value of "
                                  f"{self.grid[grid_pos]} at position "
@@ -276,7 +299,7 @@ class ContinuousEnvironment:
 
 
         # Calculate the reward for the agent
-        reward = self.reward_fn(self.grid, new_pos)
+        reward = self.reward_fn(self.grid, new_pos, agent_size=self.agent_size)
 
         self._move_agent(new_pos)
         
@@ -293,7 +316,7 @@ class ContinuousEnvironment:
         return self.agent_pos, reward, self.terminal_state, self.info
 
     @staticmethod
-    def _default_reward_function(grid, agent_pos) -> float:
+    def _default_reward_function(grid, agent_pos, agent_size) -> float:
         """Reward function that considers distance to nearest target.
         
         Args:
@@ -305,7 +328,20 @@ class ContinuousEnvironment:
         """
         
         grid_pos = tuple(np.floor(agent_pos).astype(int))
+        half_size = agent_size / 2
 
+        # Define the agent's bounding box
+        min_x = agent_pos[0] - half_size
+        max_x = agent_pos[0] + half_size
+        min_y = agent_pos[1] - half_size
+        max_y = agent_pos[1] + half_size
+
+        # Penalize overlap with obstacles
+        for x in np.arange(min_x, max_x, 0.1):
+            for y in np.arange(min_y, max_y, 0.1):
+                grid_pos = tuple(np.floor([x, y]).astype(int))
+                if grid[grid_pos] == 1 or grid[grid_pos] == 2:  # Wall or obstacle
+                    return -5.0  # Heavy penalty for invalid moves
 
         # Base rewards for different tile types
         match grid[grid_pos]:
