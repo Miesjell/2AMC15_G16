@@ -291,6 +291,39 @@ class ContinuousEnvironment:
                             reward, is_single_step)
 
         return self.agent_pos, reward, self.terminal_state, self.info
+    
+    @staticmethod
+    def distance_sensor(grid, agent_pos):
+        pos = agent_pos
+        row, col = pos
+        distances = {"up": 0.0, "down": 0.0, "left": 0.0, "right": 0.0}
+        step_size = 0.1
+
+        # Up
+        r = row - step_size
+        while int(r) >= 0 and grid[int(r), int(col)] == 0:
+            distances["up"] += step_size
+            r -= step_size
+
+        # Down
+        r = row + step_size
+        while int(r) < grid.shape[0] and grid[int(r), int(col)] == 0:
+            distances["down"] += step_size
+            r += step_size
+
+        # Left
+        c = col - step_size
+        while int(c) >= 0 and grid[int(row), int(c)] == 0:
+            distances["left"] += step_size
+            c -= step_size
+
+        # Right
+        c = col + step_size
+        while int(c) < grid.shape[1] and grid[int(row), int(c)] == 0:
+            distances["right"] += step_size
+            c += step_size
+
+        return distances
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:
