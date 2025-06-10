@@ -349,17 +349,17 @@ class ContinuousEnvironment:
                     base_reward += 5
                 
 
-        # Base rewards for different tile types
-        match grid[grid_pos]:
-            case 0:  # Empty tile
-                base_reward = -0.01 # do we want this?
-            case 1 | 2:  # Wall or obstacle
-                return -5.0  # 
-            case 3:  # Target tile
-                return 5.0  # Return immediately for reaching target
-            case _:
-                raise ValueError(f"Grid cell should not have value: {grid[grid_pos]}.",
-                                f"at position {grid_pos}")
+        # # Base rewards for different tile types
+        # match grid[grid_pos]:
+        #     case 0:  # Empty tile
+        #         base_reward = -0.01 # do we want this?
+        #     case 1 | 2:  # Wall or obstacle
+        #         return -5.0  # 
+        #     case 3:  # Target tile
+        #         return 5.0  # Return immediately for reaching target
+        #     case _:
+        #         raise ValueError(f"Grid cell should not have value: {grid[grid_pos]}.",
+        #                         f"at position {grid_pos}")
         
         # Find all target positions
         target_positions = np.where(grid == 3)
