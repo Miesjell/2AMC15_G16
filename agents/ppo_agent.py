@@ -318,17 +318,14 @@ class PPOAgent(ContinuousBaseAgent):
                           dones: torch.Tensor) -> torch.Tensor:
         """Calculate discounted returns."""
         returns = torch.zeros_like(rewards)
-        running_return = 0
-        
+        running_return = next_values[-1] if len(next_values) > 0 else 0.0 #start with last bootstrap
         for t in reversed(range(len(rewards))):
+            # if episode ended, reset bootstrap
             if dones[t]:
-                running_return = 0
-            else:
-                running_return = rewards[t] + self.gamma * running_return
-            if t < len(returns) - 1:
-                running_return += self.gamma * next_values[t] * (1 - dones[t].float())
+                running_return = 0.0
+            # standard discounted sum
+            running_return = rewards[t] + self.gamma * running_return
             returns[t] = running_return
-        
         return returns
     
     def _clear_memory(self):
