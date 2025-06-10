@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 from datetime import datetime
 import csv
+import numpy as np
 
 try:
     from world import Environment
@@ -31,6 +32,7 @@ except ModuleNotFoundError:
     from world.continuousEnvironment import ContinuousEnvironment
 
     from agents.random_agent import RandomAgent
+    from agents.dqn_agent import DqnAgent
 
 
 def parse_args():
@@ -105,7 +107,13 @@ def load_agent(agent_name: str, env):
         # Get the class and instantiate it
         agent_class = getattr(module, agent_name)
         print(f"Loaded agent class: {agent_class}")
-        return agent_class(env)
+        # pass grid to dqn
+        if agent_name == "DQNAgent":
+            grid_shape = env.grid.shape  # (H, W)
+            return agent_class(env, grid_shape=grid_shape)
+        else:
+            return agent_class(env)
+        #return agent_class(env)
     except (ImportError, AttributeError) as e:
         print(f"Error loading agent '{agent_name}': {e}")
         print("Falling back to RandomAgent.")
@@ -144,6 +152,7 @@ def main(
 
         # Set up the environment
         env = ContinuousEnvironment(
+        #env = Environment(
             grid,
             no_gui,
             sigma=sigma,
@@ -210,7 +219,104 @@ def main(
                 writer = csv.writer(f)
                 writer.writerow(["episode", "return"])
                 writer.writerows(zip(episode_numbers, episode_returns))
-            
+
+        # Training for DQN
+        elif agent.__class__.__name__ == "DqnMlpAgent":
+            print("Training DQN Agent...")
+
+            # Warm up replay buffer with random actions
+            print("Warming up replay buffer...")
+            state = env.reset(agent_start_pos=startPos)
+            for _ in range(1000):  # Increased warmup
+                action = np.random.randint(0, agent.action_dim)
+                next_state, reward, terminated, _ = env.step(action)
+                agent.update(state, env.grid.copy(), reward, action, next_state, env.grid.copy(), terminated)
+                if terminated:
+                    state = env.reset(agent_start_pos=startPos)
+                else:
+                    state = next_state
+
+            print(f"Replay buffer warmed up with {len(agent.buffer)} experiences")
+
+            # Training loop
+            for episode in trange(episodes, desc="Training episodes"):
+                state = env.reset(agent_start_pos=startPos)
+                episode_reward = 0
+                steps_in_episode = 0
+
+                for step in range(iters):
+                    # Take action
+                    action = agent.take_action(state, env.grid.copy())
+                    next_state, reward, terminated, info = env.step(action)
+
+                    # Store experience
+                    agent.update(state, env.grid.copy(), reward, action,
+                                 next_state, env.grid.copy(), terminated)
+
+                    episode_reward += reward
+                    steps_in_episode += 1
+                    state = next_state
+
+                    # Perform learning updates more frequently
+                    if len(agent.buffer) >= agent.batch_size and step % 4 == 0:
+                        loss = agent.update_batch(num_updates=1)
+
+                    if terminated:
+                        break
+
+                # Decay epsilon after each episode
+                agent.decay_epsilon()
+
+                # Logging
+                # if episode % 10 == 0:
+                #     print(f"Episode {episode}: Reward={episode_reward:.2f}, "
+                #           f"Steps={steps_in_episode}, Epsilon={agent.epsilon:.3f}")
+
+                # Evaluation every 50 episodes
+                if episode % 200 == 0:
+                    print(f"Evaluating at episode {episode}...")
+                    # Set epsilon to 0 for evaluation (pure exploitation)
+                    old_epsilon = agent.epsilon
+                    agent.epsilon = 0.0
+
+                    total_return = ContinuousEnvironment.evaluate_agent(
+                        grid, agent, iters, sigma,
+                        random_seed=random_seed,
+                        agent_start_pos=startPos
+                    )
+
+                    # Restore epsilon
+                    agent.epsilon = old_epsilon
+
+                    episode_returns.append(total_return)
+                    episode_numbers.append(episode + 1)
+                    print(f"Evaluation return: {total_return}")
+
+            # Plot learning curve
+            plt.figure(figsize=(10, 6))
+            plt.plot(episode_numbers, episode_returns, label="Episode Return", marker='o')
+            plt.xlabel("Episode")
+            plt.ylabel("Total Return")
+            plt.title(f"DQN Learning Curve - {grid.stem}")
+            plt.legend()
+            plt.grid(True)
+
+            # Save plot
+            grid_dir = Path("learning_curves") / grid.stem
+            grid_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            plt.savefig(grid_dir / f"{grid.stem}_DQN_curve_{timestamp}.png")
+            plt.close()
+
+            # Save data to CSV
+            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["episode", "return"])
+                writer.writerows(zip(episode_numbers, episode_returns))
+
+
         else:
 
             # Always reset the environment to initial state

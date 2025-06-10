@@ -145,7 +145,7 @@ class ContinuousEnvironment:
 
 
 
-    def reset(self, **kwargs) -> tuple[int, int]:
+    def reset(self, **kwargs) -> np.ndarray: # tuple[int, int]: update the state to floats
         """Reset the environment to an initial state.
 
         You can fit it keyword arguments which will overwrite the 
@@ -271,7 +271,7 @@ class ContinuousEnvironment:
         # Make the move
         self.info["actual_action"] = actual_action
         direction = action_to_direction(actual_action)
-        step_size = 0.2  # for example
+        step_size = 0.5  # for example
         new_pos = self.agent_pos + step_size * np.array(direction)
 
 
@@ -310,11 +310,12 @@ class ContinuousEnvironment:
         # Base rewards for different tile types
         match grid[grid_pos]:
             case 0:  # Empty tile
-                base_reward = -0.01
+                base_reward = -0.1
             case 1 | 2:  # Wall or obstacle
-                return -0.05  # Return immediately for invalid moves
+                #return -0.05  # Return immediately for invalid moves
+                return -1.0  # dqn
             case 3:  # Target tile
-                return 5.0  # Return immediately for reaching target
+                return 20.0 # Return immediately for reaching target
             case _:
                 raise ValueError(f"Grid cell should not have value: {grid[grid_pos]}.",
                                 f"at position {grid_pos}")
@@ -396,7 +397,8 @@ class ContinuousEnvironment:
                 evaluation. If False, only saves the images.
         """
 
-        env = Environment(grid_fp=grid_fp,
+        #env = Environment(grid_fp=grid_fp, ensures consistent use of continuous state logic during evaluation.
+        env = ContinuousEnvironment(grid_fp=grid_fp,
                           no_gui=True,
                           sigma=sigma,
                           agent_start_pos=agent_start_pos,
@@ -414,7 +416,8 @@ class ContinuousEnvironment:
 
         for _ in trange(max_steps, desc="Evaluating agent"):
             
-            action = agent.take_action(state)
+            #action = agent.take_action(state) change for dqn
+            action = agent.take_action(state, env.grid.copy())
             state, reward, terminated, _ = env.step(action)
 
             # Calculate simple total return
