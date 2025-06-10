@@ -361,22 +361,22 @@ class ContinuousEnvironment:
         #         raise ValueError(f"Grid cell should not have value: {grid[grid_pos]}.",
         #                         f"at position {grid_pos}")
         
-        # Find all target positions
-        target_positions = np.where(grid == 3)
-        if len(target_positions[0]) == 0:
-            return base_reward
+        # # Find all target positions
+        # target_positions = np.where(grid == 3)
+        # if len(target_positions[0]) == 0:
+        #     return base_reward
         
-        # Calculate Manhattan distances using vectorized operations
-        target_rows, target_cols = target_positions
-        row_distances = np.abs(agent_pos[0] - target_rows)
-        col_distances = np.abs(agent_pos[1] - target_cols)
-        manhattan_distances = row_distances + col_distances
+        # # Calculate Manhattan distances using vectorized operations
+        # target_rows, target_cols = target_positions
+        # row_distances = np.abs(agent_pos[0] - target_rows)
+        # col_distances = np.abs(agent_pos[1] - target_cols)
+        # manhattan_distances = row_distances + col_distances
         
-        # Find minimum distance and calculate proximity reward
-        min_distance = np.min(manhattan_distances)
-        proximity_reward = -0.1 * min_distance
+        # # Find minimum distance and calculate proximity reward
+        # min_distance = np.min(manhattan_distances)
+        # proximity_reward = -0.1 * min_distance
         
-        return base_reward + proximity_reward
+        return base_reward
 
     # @staticmethod
     # def _default_reward_function(grid, agent_pos) -> float:
