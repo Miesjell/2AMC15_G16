@@ -140,6 +140,10 @@ def main(
             startPos = [2,7]
         elif grid.name == "Open_Field_2.npy":
             startPos = [2,7]
+        elif grid.name == "restaurant.npy":
+            startPos = [2,2]
+        elif grid.name == "restaurant2.npy":
+            startPos = [2,2]
         
 
         # Set up the environment
@@ -224,6 +228,10 @@ def main(
                     action = agent.take_action(state)
                     state, reward, terminated, info = env.step(action)
                     agent.update(state, reward, info["actual_action"])
+                    # Test distances
+                    distances = env.distance_sensor(env.grid, env.agent_pos)
+                    print(distances)
+
                     if terminated:
                         break
 
