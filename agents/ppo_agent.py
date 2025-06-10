@@ -37,13 +37,15 @@ class PolicyNetwork(nn.Module):
                 nn.init.xavier_uniform_(module.weight)
                 nn.init.constant_(module.bias, 0.0)
     
-    def forward(self, state):
+    def forward(self, state, temperature: float = 1.0):
         """Forward pass through the policy network."""
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        action_logits = self.action_head(x)
-        return F.softmax(action_logits, dim=-1)
+        #scale logits instead of probabilites by getting logits first and dividing by temperature:
+        logits = self.action_head(x)
+        scaled_logits = logits / temperature  
+        return F.softmax(scaled_logits, dim=-1)
 
 
 class ValueNetwork(nn.Module):
@@ -176,29 +178,21 @@ class PPOAgent(ContinuousBaseAgent):
         state_tensor = self.normalize_state(state).unsqueeze(0)
         
         with torch.no_grad():
-            action_probs = self.policy_net(state_tensor)
+            action_probs = self.policy_net(state_tensor, self.temperature)
             
             if self.training:
                 # Add exploration noise and epsilon-greedy
                 if np.random.random() < self.epsilon:
                     # Random exploration
-                    action = np.random.randint(0, 8)
+                    action = np.random.randint(0, self.action_dim)
                     # Calculate log prob for the random action
                     dist = torch.distributions.Categorical(action_probs)
                     self._temp_log_prob = dist.log_prob(torch.tensor(action)).item()
                 else:
-                    # Sample from policy with entropy bonus
-                    # Add temperature for exploration
-                    temp_probs = action_probs / self.temperature
-                    temp_probs = F.softmax(temp_probs, dim=-1)
                     
-                    dist = torch.distributions.Categorical(temp_probs)
-                    action = dist.sample()
-                    log_prob = dist.log_prob(action)
-                    
-                    # Store for experience buffer
-                    self._temp_log_prob = log_prob.item()
-                    action = action.item()
+                    dist = torch.distributions.Categorical(action_probs)
+                    action = dist.sample().item()
+                    self._temp_log_prob = dist.log_prob(torch.tensor(action)).item()
                 
                 # Decay epsilon
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
