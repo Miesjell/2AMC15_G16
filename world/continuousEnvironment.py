@@ -369,17 +369,20 @@ class ContinuousEnvironment:
         max_x = agent_pos[0] + half_size
         min_y = agent_pos[1] - half_size
         max_y = agent_pos[1] + half_size
+
+        distances = ContinuousEnvironment.distance_sensor(grid, agent_pos)
+        max_distance = max(distances.values())
+        proximity_reward = 0.1 * max_distance
         
-        base_reward = 0.0
         for x in np.arange(min_x, max_x, 0.1):
             for y in np.arange(min_y, max_y, 0.1):
                 grid_pos = tuple(np.floor([x, y]).astype(int))
                 if grid[grid_pos] == 1 or grid[grid_pos] == 2:  # Wall or obstacle
                     return -5.0  # Heavy penalty for invalid moves
                 elif grid[grid_pos] == 0:
-                    base_reward += -0.01
+                    return -0.01 + proximity_reward
                 elif grid[grid_pos] == 3:
-                    base_reward += 5
+                    return 5.0 + proximity_reward
                 
 
         # # Base rewards for different tile types
@@ -409,7 +412,7 @@ class ContinuousEnvironment:
         # min_distance = np.min(manhattan_distances)
         # proximity_reward = -0.1 * min_distance
         
-        return base_reward
+        #return base_reward
 
     # @staticmethod
     # def _default_reward_function(grid, agent_pos) -> float:
