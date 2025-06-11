@@ -131,7 +131,7 @@ def main(
 
         # Setting proper start positions for each grid
         if grid.name == "A1_grid.npy":
-            startPos = [3,11]
+            startPos = [11,2]
         elif grid.name == "Maze_Grid.npy":
             startPos = [1,5]
         elif grid.name == "Risk_Grid.npy":
