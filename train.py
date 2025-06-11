@@ -144,6 +144,8 @@ def main(
             startPos = [2,2]
         elif grid.name == "restaurant2.npy":
             startPos = [2,2]
+        elif grid.name == "mainrestaurant.npy":
+            startPos = [8,2]
         
 
         # Set up the environment
