@@ -193,21 +193,29 @@ class ContinuousEnvironment:
     
     def _check_agent_size(self, agent_pos: tuple[float, float]) -> bool:
         """Checks if the agent's size fits within the grid cell."""
-        grid_pos = tuple(np.floor(agent_pos).astype(int))
         half_size = self.agent_size / 2
 
-        # Define the agent's range of x and y
-        min_x = agent_pos[0] - half_size
-        max_x = agent_pos[0] + half_size
-        min_y = agent_pos[1] - half_size
-        max_y = agent_pos[1] + half_size
+        # We define the corners around the circle
+        corners = [
+            (agent_pos[0] - half_size, agent_pos[1] - half_size),
+            (agent_pos[0] - half_size, agent_pos[1] + half_size),  
+            (agent_pos[0] + half_size, agent_pos[1] - half_size),  
+            (agent_pos[0] + half_size, agent_pos[1] + half_size),  
+        ]
 
-        # Check if the bounding box overlaps any obstacles
-        for x in np.arange(min_x, max_x, 0.1):  # What step size do we want?
-            for y in np.arange(min_y, max_y, 0.1):
-                grid_pos = tuple(np.floor([x, y]).astype(int))
-                if self.grid[grid_pos] not in [0,3]:  # Move should not be made if it is not over an empty cell or the target
-                    return False
+        # # Check if the bounding box overlaps any obstacles
+        # for x in np.arange(min_x, max_x, 0.1):  # What step size do we want?
+        #     for y in np.arange(min_y, max_y, 0.1):
+        #         grid_pos = tuple(np.floor([x, y]).astype(int))
+        #         if self.grid[grid_pos] not in [0,3]:  # Move should not be made if it is not over an empty cell or the target
+        #             return False
+        # return True
+
+        for corner in corners:
+            grid_pos = tuple(np.floor(corner).astype(int))
+            if self.grid[grid_pos] not in [0, 3]:
+                return False
+            
         return True
 
     def _move_agent(self, new_pos: tuple[int, int]):
@@ -361,28 +369,23 @@ class ContinuousEnvironment:
             A floating point value representing the reward
         """
         
-        grid_pos = tuple(np.floor(agent_pos).astype(int))
         half_size = agent_size / 2
 
-        # Define the agent's bounding box
-        min_x = agent_pos[0] - half_size
-        max_x = agent_pos[0] + half_size
-        min_y = agent_pos[1] - half_size
-        max_y = agent_pos[1] + half_size
-
-        distances = ContinuousEnvironment.distance_sensor(grid, agent_pos)
-        max_distance = max(distances.values())
-        proximity_reward = 0.1 * max_distance
+        corners = [
+            (agent_pos[0] - half_size, agent_pos[1] - half_size),  
+            (agent_pos[0] - half_size, agent_pos[1] + half_size),  
+            (agent_pos[0] + half_size, agent_pos[1] - half_size), 
+            (agent_pos[0] + half_size, agent_pos[1] + half_size),  
+        ]
         
-        for x in np.arange(min_x, max_x, 0.1):
-            for y in np.arange(min_y, max_y, 0.1):
-                grid_pos = tuple(np.floor([x, y]).astype(int))
-                if grid[grid_pos] == 1 or grid[grid_pos] == 2:  # Wall or obstacle
-                    return -5.0  # Heavy penalty for invalid moves
-                elif grid[grid_pos] == 0:
-                    return -0.01 + proximity_reward
-                elif grid[grid_pos] == 3:
-                    return 5.0 + proximity_reward
+        for corner in corners:
+            grid_pos = tuple(np.floor(corner).astype(int))
+            if grid[grid_pos] == 1 or grid[grid_pos] == 2:  # Wall or obstacle
+                return -5.0  # Heavy penalty for invalid moves
+            elif grid[grid_pos] == 0:
+                return -0.01 
+            elif grid[grid_pos] == 3:
+                return 5.0
                 
 
         # # Base rewards for different tile types
@@ -474,12 +477,13 @@ class ContinuousEnvironment:
                 evaluation. If False, only saves the images.
         """
 
-        env = Environment(grid_fp=grid_fp,
+        env = ContinuousEnvironment(grid_fp=grid_fp,
                           no_gui=True,
                           sigma=sigma,
                           agent_start_pos=agent_start_pos,
                           target_fps=-1,
-                          random_seed=random_seed)
+                          random_seed=random_seed,
+                          agent_size=0.5)
         
         state = env.reset()
         initial_grid = np.copy(env.grid)

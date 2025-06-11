@@ -145,7 +145,8 @@ class GUI:
 
         x = float(agent_pos[0]) * self.scalar + x_offset
         y = float(agent_pos[1]) * self.scalar + y_offset
-        r = int(self.scalar / 2.5)
+        #r = int(self.scalar / 2.5)
+        r = int(self.scalar / 5)
 
         gfxdraw.aacircle(surface, int(x), int(y), r, (0, 0, 102))
         gfxdraw.filled_circle(surface, int(x), int(y), r, (0, 0, 102))
