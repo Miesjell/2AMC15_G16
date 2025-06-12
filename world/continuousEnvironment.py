@@ -1,14 +1,11 @@
-"""
-Continuous Environment.
-"""
 import random
-import datetime
 import numpy as np
 from tqdm import trange
 from pathlib import Path
 from warnings import warn
 from time import time, sleep
 from datetime import datetime
+
 from world.helpers import save_results, action_to_direction
 
 try:
@@ -17,150 +14,86 @@ try:
     from world.gui import GUI
     from world.path_visualizer import visualize_path
 except ModuleNotFoundError:
-    from os import path
-    from os import pardir
-    import sys
-
-    root_path = path.abspath(path.join(
-        path.join(path.abspath(__file__), pardir), pardir)
-    )
-
+    import sys, os
+    root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
     if root_path not in sys.path:
         sys.path.append(root_path)
-
     from agents import BaseAgent
     from world.grid import Grid
     from world.gui import GUI
     from world.path_visualizer import visualize_path
 
+
 class ContinuousEnvironment:
-    def __init__(self,
-                 grid_fp: Path,
-                 no_gui: bool = False,
-                 sigma: float = 0.,
-                 agent_start_pos: tuple[int, int] = None,
-                 reward_fn: callable = None,
-                 target_fps: int = 30,
-                 random_seed: int | float | str | bytes | bytearray | None = 0, 
-                 agent_size: float = 1):
-        
-        """Creates the Grid Environment for the Reinforcement Learning robot
-        from the provided file.
-
-        This environment follows the general principles of reinforcment
-        learning. It can be thought of as a function E : action -> observation
-        where E is the environment represented as a function.
-
-        Args:
-            grid_fp: Path to the grid file to use.
-            no_gui: True if no GUI is desired.
-            sigma: The stochasticity of the environment. The probability that
-                the agent makes the move that it has provided as an action is
-                calculated as 1-sigma.
-            agent_start_pos: Tuple where each agent should start.
-                If None is provided, then a random start position is used.
-            reward_fn: Custom reward function to use. 
-            target_fps: How fast the simulation should run if it is being shown
-                in a GUI. If in no_gui mode, then the simulation will run as fast as
-                possible. We may set a low FPS so we can actually see what's
-                happening. Set to 0 or less to unlock FPS.
-            random_seed: The random seed to use for this environment. If None
-                is provided, then the seed will be set to 0.
-        """
+    def __init__(
+        self,
+        grid_fp: Path,
+        no_gui: bool = False,
+        sigma: float = 0.0,
+        agent_start_pos: tuple[int, int] = None,
+        reward_fn: callable = None,
+        target_fps: int = 30,
+        random_seed: int | float | str | bytes | bytearray | None = 0,
+        agent_size: float = 1.0,
+    ):
         random.seed(random_seed)
 
-        # Initialize Grid
+        # Load grid
         if not grid_fp.exists():
             raise FileNotFoundError(f"Grid {grid_fp} does not exist.")
-        else:
-            self.grid_fp = grid_fp
+        self.grid_fp = grid_fp
 
-        # Initialize other variables
+        # Other settings
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
-        self.agent_size = 1 # adding the size of the agent that must be taken into account, in terms of diameter
-              
-        # Set up reward function
+        self.agent_size = agent_size
+        # keep track of which grid‐cells we’ve been in for novelty bonus
+        self.visited: set[tuple[int,int]] = set()
+
+        # Reward function
         if reward_fn is None:
             warn("No reward function provided. Using default reward.")
             self.reward_fn = self._default_reward_function
         else:
             self.reward_fn = reward_fn
 
-        # GUI specific code: Set up the environment as a blank state.
+        # GUI
         self.no_gui = no_gui
-        if target_fps <= 0:
-            self.target_spf = 0.
-        else:
-            self.target_spf = 1. / target_fps
+        self.target_spf = 0.0 if target_fps <= 0 else 1.0 / target_fps
         self.gui = None
 
     def _reset_info(self) -> dict:
-        """Resets the info dictionary.
+        return {"target_reached": False, "agent_moved": False, "actual_action": None}
 
-        info is a dict with information of the most recent step
-        consisting of whether the target was reached or the agent
-        moved and the updated agent position.
-        """
-        return {"target_reached": False,
-                "agent_moved": False,
-                "actual_action": None}
-    
     @staticmethod
     def _reset_world_stats() -> dict:
-        """Resets the world stats dictionary.
-
-        world_stats is a dict with information about the 
-        environment since last env.reset(). Basically, it
-        accumulates information.
-        """
-        return {"cumulative_reward": 0,
-                "total_steps": 0,
-                "total_agent_moves": 0,
-                "total_failed_moves": 0,
-                "total_targets_reached": 0,
-                }
+        return {
+            "cumulative_reward": 0,
+            "total_steps": 0,
+            "total_agent_moves": 0,
+            "total_failed_moves": 0,
+            "total_targets_reached": 0,
+        }
 
     def _initialize_agent_pos(self):
-        """Initializes agent position from the given location or
-        randomly chooses one if None was given.
-        """
-
         if self.agent_start_pos is not None:
             pos = (self.agent_start_pos[0], self.agent_start_pos[1])
             if self.grid[pos] == 0:
-                # Cell is empty. We can place the agent there.
-                self.agent_pos = pos
+                self.agent_pos = np.array([pos[0] + 0.5, pos[1] + 0.5], dtype=np.float32)
             else:
-                raise ValueError(
-                    "Attempted to place agent on top of obstacle, delivery"
-                    "location or charger")
+                raise ValueError("Cannot place agent on obstacle or target.")
         else:
-            # No positions were given. We place agents randomly.
-            warn("No initial agent positions given. Randomly placing agents "
-                 "on the grid.")
-            # Find all empty locations and choose one at random
+            warn("No initial agent positions given. Randomly placing agent.")
             zeros = np.where(self.grid == 0)
             idx = random.randint(0, len(zeros[0]) - 1)
-            self.agent_pos = np.array([zeros[0][idx] + 0.5, zeros[1][idx] + 0.5], dtype=np.float32)
+            self.agent_pos = np.array(
+                [zeros[0][idx] + 0.5, zeros[1][idx] + 0.5], dtype=np.float32
+            )
 
-
-
-    def reset(self, **kwargs) -> tuple[int, int]:
-        """Reset the environment to an initial state.
-
-        You can fit it keyword arguments which will overwrite the 
-        initial arguments provided when initializing the environment.
-
-        Args:
-            **kwargs: possible keyword options are the same as those for
-                the environment initializer.
-        Returns:
-             initial state.
-        """
+    def reset(self, **kwargs) -> np.ndarray:
+        # Override settings
         for k, v in kwargs.items():
-            # Go through each possible keyword argument.
             match k:
                 case "grid_fp":
                     self.grid_fp = v
@@ -169,348 +102,223 @@ class ContinuousEnvironment:
                 case "no_gui":
                     self.no_gui = v
                 case "target_fps":
-                    self.target_spf = 1. / v
+                    self.target_spf = 1.0 / v
                 case _:
-                    raise ValueError(f"{k} is not one of the possible "
-                                     f"keyword arguments.")
-        
-        # Reset variables
+                    raise ValueError(f"{k} is not a valid argument.")
+
+        # Reset world
         self.grid = Grid.load_grid(self.grid_fp).cells
         self._initialize_agent_pos()
         self.terminal_state = False
         self.info = self._reset_info()
         self.world_stats = self._reset_world_stats()
 
-        # GUI specific code
+        # GUI
         if not self.no_gui:
             self.gui = GUI(self.grid.shape)
             self.gui.reset()
-        else:
-            if self.gui is not None:
-                self.gui.close()
+        elif self.gui is not None:
+            self.gui.close()
 
-        return self.agent_pos
-    
+        return self._get_obs()
+
     def _check_agent_size(self, agent_pos: tuple[float, float]) -> bool:
-        """Checks if the agent's size fits within the grid cell."""
-        half_size = self.agent_size / 2
-
-        # We define the corners around the circle
+        half = self.agent_size / 2
         corners = [
-            (agent_pos[0] - half_size, agent_pos[1] - half_size),
-            (agent_pos[0] - half_size, agent_pos[1] + half_size),  
-            (agent_pos[0] + half_size, agent_pos[1] - half_size),  
-            (agent_pos[0] + half_size, agent_pos[1] + half_size),  
+            (agent_pos[0] - half, agent_pos[1] - half),
+            (agent_pos[0] - half, agent_pos[1] + half),
+            (agent_pos[0] + half, agent_pos[1] - half),
+            (agent_pos[0] + half, agent_pos[1] + half),
         ]
-
-        # # Check if the bounding box overlaps any obstacles
-        # for x in np.arange(min_x, max_x, 0.1):  # What step size do we want?
-        #     for y in np.arange(min_y, max_y, 0.1):
-        #         grid_pos = tuple(np.floor([x, y]).astype(int))
-        #         if self.grid[grid_pos] not in [0,3]:  # Move should not be made if it is not over an empty cell or the target
-        #             return False
-        # return True
-
         for corner in corners:
             grid_pos = tuple(np.floor(corner).astype(int))
             if self.grid[grid_pos] not in [0, 3]:
                 return False
-            
         return True
 
-    def _move_agent(self, new_pos: tuple[int, int]):
-        """Moves the agent, if possible and updates the 
-        corresponding stats.
-
-        Args:
-            new_pos: The new position of the agent.
-        """
-
-
+    def _move_agent(self, new_pos: tuple[float, float]):
         grid_pos = tuple(np.floor(new_pos).astype(int))
-
-        match self.grid[grid_pos]:
-            case 0:  # Moved to an empty tile
-                if self._check_agent_size(new_pos):
-                    self.agent_pos = new_pos
-                    self.info["agent_moved"] = True
-                    self.world_stats["total_agent_moves"] += 1
-            case 1 | 2:  # Moved to a wall or obstacle
-                # Here we do not need to check the agent size since the move should not be made in general
-                self.world_stats["total_failed_moves"] += 1
-                self.info["agent_moved"] = False
-                pass
-            case 3:  # Moved to a target tile
-                if self._check_agent_size(new_pos):
-                    self.agent_pos = new_pos
+        cell = self.grid[grid_pos]
+        if cell in [1, 2]:
+            self.world_stats["total_failed_moves"] += 1
+            self.info["agent_moved"] = False
+        else:
+            if self._check_agent_size(new_pos):
+                self.agent_pos = new_pos
+                self.info["agent_moved"] = True
+                self.world_stats["total_agent_moves"] += 1
+                if cell == 3:
                     self.grid[grid_pos] = 0
-                    if np.sum(self.grid == 3) == 0:
-                        self.terminal_state = True
+                    self.terminal_state = (np.sum(self.grid == 3) == 0)
                     self.info["target_reached"] = True
                     self.world_stats["total_targets_reached"] += 1
-                    self.info["agent_moved"] = True
-                    self.world_stats["total_agent_moves"] += 1
-                    # Otherwise, the agent can't move and nothing happens
-            case _:
-                raise ValueError(f"Grid is badly formed. It has a value of "
-                                 f"{self.grid[grid_pos]} at position "
-                                 f"{new_pos}.")
-        
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool]:
-        """This function makes the agent take a step on the grid.
-
-        Action is provided as integer and values are:
-            - 0: Move down
-            - 1: Move up
-            - 2: Move left
-            - 3: Move right
-        Args:
-            action: Integer representing the action the agent should
-                take. 
-
-        Returns:
-            0) Current state,
-            1) The reward for the agent,
-            2) If the terminal state has been reached, and
-        """
-        
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, dict]:
         self.world_stats["total_steps"] += 1
-        
-        # GUI specific code
-        is_single_step = False
+
+        # GUI pause/render
+        is_single = False
         if not self.no_gui:
-            start_time = time()
+            start = time()
             while self.gui.paused:
-                # If the GUI is paused but asking to step, then we step
                 if self.gui.step:
-                    is_single_step = True
+                    is_single = True
                     self.gui.step = False
                     break
-                # Otherwise, we render the current state only
                 paused_info = self._reset_info()
                 paused_info["agent_moved"] = True
-                self.gui.render(self.grid, self.agent_pos, paused_info,
-                                0, is_single_step)    
+                self.gui.render(self.grid, self.agent_pos, paused_info, 0, is_single)
 
-        # Add stochasticity into the agent action
-        val = random.random()
-        if val > self.sigma:
-            actual_action = action
-        else:
-            actual_action = random.randint(0, 3)
-        
-        # Make the move
-        self.info["actual_action"] = actual_action
-        direction = action_to_direction(actual_action)
-        step_size = 0.2  # for example
+        # Stochastic action
+        actual = action if random.random() > self.sigma else random.randint(0, 3)
+        self.info["actual_action"] = actual
+
+        # Move
+        direction = action_to_direction(actual)
+        step_size = 0.2
         new_pos = self.agent_pos + step_size * np.array(direction)
-
-
-        # Calculate the reward for the agent
         reward = self.reward_fn(self.grid, new_pos, agent_size=self.agent_size)
-
         self._move_agent(new_pos)
-        
         self.world_stats["cumulative_reward"] += reward
 
-        # GUI specific code
+        # GUI render
         if not self.no_gui:
-            time_to_wait = self.target_spf - (time() - start_time)
-            if time_to_wait > 0:
-                sleep(time_to_wait)
-            self.gui.render(self.grid, self.agent_pos, self.info,
-                            reward, is_single_step)
+            wait_t = self.target_spf - (time() - start)
+            if wait_t > 0:
+                sleep(wait_t)
+            self.gui.render(self.grid, self.agent_pos, self.info, reward, is_single)
 
-        return self.agent_pos, reward, self.terminal_state, self.info
-    
+        return self._get_obs(), reward, self.terminal_state, self.info
+
     @staticmethod
     def distance_sensor(grid, agent_pos):
-        pos = agent_pos
-        row, col = pos
+        row, col = agent_pos
         distances = {"up": 0.0, "down": 0.0, "left": 0.0, "right": 0.0}
-        step_size = 0.1
-
+        step = 0.1
         # Up
-        r = row - step_size
+        r = row - step
         while int(r) >= 0 and grid[int(r), int(col)] == 0:
-            distances["up"] += step_size
-            r -= step_size
-
+            distances["up"] += step
+            r -= step
         # Down
-        r = row + step_size
+        r = row + step
         while int(r) < grid.shape[0] and grid[int(r), int(col)] == 0:
-            distances["down"] += step_size
-            r += step_size
-
+            distances["down"] += step
+            r += step
         # Left
-        c = col - step_size
+        c = col - step
         while int(c) >= 0 and grid[int(row), int(c)] == 0:
-            distances["left"] += step_size
-            c -= step_size
-
+            distances["left"] += step
+            c -= step
         # Right
-        c = col + step_size
+        c = col + step
         while int(c) < grid.shape[1] and grid[int(row), int(c)] == 0:
-            distances["right"] += step_size
-            c += step_size
-
+            distances["right"] += step
+            c += step
         return distances
 
-    @staticmethod
-    def _default_reward_function(grid, agent_pos, agent_size) -> float:
-        """Reward function that considers distance to nearest target.
-        
-        Args:
-            grid: The grid the agent is moving on
-            agent_pos: The position the agent is moving to
-            
-        Returns:
-            A floating point value representing the reward
-        """
-        
-        half_size = agent_size / 2
+    def _get_obs(self) -> np.ndarray:
+        """Return normalized [x, y, up, down, left, right] floats."""
+        H, W = self.grid.shape
+        x, y = self.agent_pos
 
+        # Normalize position
+        norm_x = x / (H - 1)
+        norm_y = y / (W - 1)
+
+        # Get and normalize distances
+        d = self.distance_sensor(self.grid, (x, y))
+        max_dist = float(H + W)
+        up    = np.clip(d["up"],    0, max_dist) / max_dist
+        down  = np.clip(d["down"],  0, max_dist) / max_dist
+        left  = np.clip(d["left"],  0, max_dist) / max_dist
+        right = np.clip(d["right"], 0, max_dist) / max_dist
+
+        return np.array([norm_x, norm_y, up, down, left, right], dtype=np.float32)
+
+    
+    def _default_reward_function(self, grid, agent_pos, agent_size) -> float:
+        """
+        Reward breakdown:
+          -5.0   for collision (wall/obstacle)
+         +500.0 for reaching the kitchen (target)
+          -0.01  per step (time penalty)
+         +0.2   opening bonus (from local 4-way sensor)
+         +0.3   novelty bonus for visiting new grid cells
+        """
+        import numpy as np
+    
+        # Configurable constants
+        GOAL_REWARD = 500.0
+        COLLISION_PENALTY = -5.0
+        STEP_PENALTY = -0.01
+        OPENING_WEIGHT = 0.2
+        NOVELTY_BONUS = 0.3
+    
+        half = agent_size / 2.0
+    
+        # 1) Check collisions & goal at the four corners
         corners = [
-            (agent_pos[0] - half_size, agent_pos[1] - half_size),  
-            (agent_pos[0] - half_size, agent_pos[1] + half_size),  
-            (agent_pos[0] + half_size, agent_pos[1] - half_size), 
-            (agent_pos[0] + half_size, agent_pos[1] + half_size),  
+            (agent_pos[0] - half, agent_pos[1] - half),
+            (agent_pos[0] - half, agent_pos[1] + half),
+            (agent_pos[0] + half, agent_pos[1] - half),
+            (agent_pos[0] + half, agent_pos[1] + half),
         ]
-        
         for corner in corners:
-            grid_pos = tuple(np.floor(corner).astype(int))
-            if grid[grid_pos] == 1 or grid[grid_pos] == 2:  # Wall or obstacle
-                return -5.0  # Heavy penalty for invalid moves
-            elif grid[grid_pos] == 0:
-                return -0.01 
-            elif grid[grid_pos] == 3:
-                return 5.0
-                
+            gp = tuple(np.floor(corner).astype(int))
+            cell = grid[gp]
+            if cell in (1, 2):  # wall or obstacle
+                return COLLISION_PENALTY
+            if cell == 3:  # kitchen
+                return GOAL_REWARD
+    
+        # 2) Base step penalty
+        reward = STEP_PENALTY
+    
+        # 3) Opening bonus (normalized local openness)
+        d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
+        max_view = float(grid.shape[0] + grid.shape[1])
+        opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
+        reward += OPENING_WEIGHT * opening_bonus
+    
+        return reward
 
-        # # Base rewards for different tile types
-        # match grid[grid_pos]:
-        #     case 0:  # Empty tile
-        #         base_reward = -0.01 # do we want this?
-        #     case 1 | 2:  # Wall or obstacle
-        #         return -5.0  # 
-        #     case 3:  # Target tile
-        #         return 5.0  # Return immediately for reaching target
-        #     case _:
-        #         raise ValueError(f"Grid cell should not have value: {grid[grid_pos]}.",
-        #                         f"at position {grid_pos}")
-        
-        # # Find all target positions
-        # target_positions = np.where(grid == 3)
-        # if len(target_positions[0]) == 0:
-        #     return base_reward
-        
-        # # Calculate Manhattan distances using vectorized operations
-        # target_rows, target_cols = target_positions
-        # row_distances = np.abs(agent_pos[0] - target_rows)
-        # col_distances = np.abs(agent_pos[1] - target_cols)
-        # manhattan_distances = row_distances + col_distances
-        
-        # # Find minimum distance and calculate proximity reward
-        # min_distance = np.min(manhattan_distances)
-        # proximity_reward = -0.1 * min_distance
-        
-        #return base_reward
 
-    # @staticmethod
-    # def _default_reward_function(grid, agent_pos) -> float:
-    #     """This is a very simple reward function. Feel free to adjust it.
-    #     Any custom reward function must also follow the same signature, meaning
-    #     it must be written like `reward_name(grid, temp_agent_pos)`.
-
-    #     Args:
-    #         grid: The grid the agent is moving on, in case that is needed by
-    #             the reward function.
-    #         agent_pos: The position the agent is moving to.
-
-    #     Returns:
-    #         A single floating point value representing the reward for a given
-    #         action.
-    #     """
-
-    #     match grid[agent_pos]:
-    #         case 0:  # Moved to an empty tile
-    #             reward = -0.01 # could be -0.01 or -0.1
-    #         case 1 | 2:  # Moved to a wall or obstacle
-    #             reward = -0.05 # coudl be -0.05 or -5
-    #             pass
-    #         case 3:  # Moved to a target tile
-    #             reward = 5 # could be 5 or 10
-    #             # "Illegal move"
-    #         case _:
-    #             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
-    #                              f"at position {agent_pos}")
-    #     return reward
 
     @staticmethod
-    def evaluate_agent(grid_fp: Path,
-                       agent: BaseAgent,
-                       max_steps: int,
-                       sigma: float = 0.,
-                       agent_start_pos: tuple[int, int] = None,
-                       random_seed: int | float | str | bytes | bytearray = 0,
-                       show_images: bool = False):
-        """Evaluates a single trained agent's performance.
-
-        What this does is it creates a completely new environment from the
-        provided grid and does a number of steps _without_ processing rewards
-        for the agent. This means that the agent doesn't learn here and simply
-        provides actions for any observation.
-
-        For each evaluation run, this produces a statistics file in the out
-        directory which is a txt. This txt contains the values:
-        [ 'total_steps`, `total_failed_moves`]
-
-        Args:
-            grid_fp: Path to the grid file to use.
-            agent: Trained agent to evaluate.
-            max_steps: Max number of steps to take.
-            sigma: same as abve.
-            agent_start_pos: same as above.
-            random_seed: same as above.
-            show_images: Whether to show the images at the end of the
-                evaluation. If False, only saves the images.
-        """
-
-        env = ContinuousEnvironment(grid_fp=grid_fp,
-                          no_gui=True,
-                          sigma=sigma,
-                          agent_start_pos=agent_start_pos,
-                          target_fps=-1,
-                          random_seed=random_seed,
-                          agent_size=0.5)
-        
+    def evaluate_agent(
+        grid_fp: Path,
+        agent: BaseAgent,
+        max_steps: int,
+        sigma: float = 0.0,
+        agent_start_pos: tuple[int, int] = None,
+        random_seed: int | float | str | bytes | bytearray = 0,
+        show_images: bool = False,
+    ):
+        env = ContinuousEnvironment(
+            grid_fp=grid_fp,
+            no_gui=True,
+            sigma=sigma,
+            agent_start_pos=agent_start_pos,
+            target_fps=-1,
+            random_seed=random_seed,
+            agent_size=0.5,
+        )
         state = env.reset()
-        initial_grid = np.copy(env.grid)
-
-        # Add initial agent position to the path
-        agent_path = [env.agent_pos]
-
-        # Initialize values for simple total return
-        total_return = 0
+        initial = np.copy(env.grid)
+        path = [env.agent_pos]
+        total = 0.0
 
         for _ in trange(max_steps, desc="Evaluating agent"):
-            
             action = agent.take_action(state)
-            state, reward, terminated, _ = env.step(action)
-
-            # Calculate simple total return
-            total_return += reward
-
-            agent_path.append(state)
-
-            if terminated:
+            state, reward, done, _ = env.step(action)
+            total += reward
+            path.append(env.agent_pos)
+            if done:
                 break
 
         env.world_stats["targets_remaining"] = np.sum(env.grid == 3)
-
-        path_image = visualize_path(initial_grid, agent_path)
-        file_name = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
-
-        save_results(file_name, env.world_stats, path_image, show_images)
-        return total_return
+        img = visualize_path(initial, path)
+        fname = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
+        save_results(fname, env.world_stats, img, show_images)
+        return total
