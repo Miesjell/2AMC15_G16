@@ -12,14 +12,16 @@ from world.continuous_environment import ContinuousEnvironment
 from agents.ppo_agent import PPOAgent
 
 
-def train_continuous_ppo(grid_path: str = "grid_configs/small_grid.npy",
+def train_continuous_ppo(grid_path: str = "grid_configs/example_grid.npy",
                         episodes: int = 1000,
                         max_steps: int = 500,
-                        step_size: float = 0.1,
-                        learning_rate: float = 3e-4,
-                        gamma: float = 0.99,
+                        step_size: float = 0.2,  # Increased from 0.1 for faster movement
+                        learning_rate: float = 3e-3,  # Increased for faster learning
+                        gamma: float = 0.98,  # Slightly lower for less long-term focus
                         save_model: bool = True,
-                        show_progress: bool = True):
+                        show_progress: bool = True,
+                        enable_visualization: bool = False,
+                        visualize_every: int = 100):
     """Train a PPO agent in the continuous environment.
     
     Args:
@@ -31,15 +33,17 @@ def train_continuous_ppo(grid_path: str = "grid_configs/small_grid.npy",
         gamma: Discount factor
         save_model: Whether to save the trained model
         show_progress: Whether to show training progress
+        enable_visualization: Whether to enable live visualization
+        visualize_every: Visualize every N episodes
     """
     
-    # Create environment
+    # Create environment with optimized parameters
     env = ContinuousEnvironment(
         grid_fp=Path(grid_path),
-        no_gui=True,
-        sigma=0.1,  # 10% stochasticity
+        no_gui=not enable_visualization,
+        sigma=0.05,  # Reduced stochasticity for better learning
         step_size=step_size,
-        collision_radius=0.1
+        collision_radius=min(0.15, step_size * 0.8)  # Adaptive collision radius
     )
     
     # Get environment bounds
@@ -58,12 +62,30 @@ def train_continuous_ppo(grid_path: str = "grid_configs/small_grid.npy",
     episode_rewards = []
     episode_lengths = []
     success_rate = []
+    targets_reached = []
+    
+    # Visualization setup
+    if enable_visualization:
+        try:
+            import pygame
+            pygame.init()
+            print("🎮 Visualization enabled!")
+        except ImportError:
+            print("⚠️  Pygame not available, disabling visualization")
+            enable_visualization = False
+    
+    print(f"🚀 Starting PPO Training")
+    print(f"📊 Episodes: {episodes}, Max Steps: {max_steps}")
+    print(f"🎯 Grid: {grid_path}")
+    print(f"🔧 Learning Rate: {learning_rate}, Gamma: {gamma}")
+    print("=" * 60)
     
     # Training loop
     for episode in trange(episodes, desc="Training PPO", disable=not show_progress):
         state = env.reset()
         episode_reward = 0
         episode_length = 0
+        target_reached = False
         
         for step in range(max_steps):
             # Take action
@@ -77,33 +99,61 @@ def train_continuous_ppo(grid_path: str = "grid_configs/small_grid.npy",
             episode_reward += reward
             episode_length += 1
             
+            # Check if target was reached
+            if done and reward > 0:
+                target_reached = True
+            
             if done:
                 break
         
         # Record metrics
         episode_rewards.append(episode_reward)
         episode_lengths.append(episode_length)
+        targets_reached.append(target_reached)
         
         # Calculate success rate (rolling average over last 100 episodes)
         recent_episodes = episode_rewards[-100:]
         success_count = sum(1 for r in recent_episodes if r > 0)  # Positive reward indicates success
         success_rate.append(success_count / len(recent_episodes))
         
-        # Print progress every 100 episodes
-        if show_progress and (episode + 1) % 100 == 0:
+        # Enhanced progress reporting
+        if show_progress and (episode + 1) % 50 == 0:
             avg_reward = np.mean(episode_rewards[-100:])
             avg_length = np.mean(episode_lengths[-100:])
             current_success_rate = success_rate[-1]
-            print(f"Episode {episode + 1:4d} | "
-                  f"Avg Reward: {avg_reward:7.2f} | "
-                  f"Avg Length: {avg_length:5.1f} | "
-                  f"Success Rate: {current_success_rate:.2%}")
+            recent_targets = sum(targets_reached[-50:])
+            
+            print(f"\n📈 Episode {episode + 1:4d} Progress:")
+            print(f"   • Avg Reward (last 100): {avg_reward:7.2f}")
+            print(f"   • Avg Length (last 100): {avg_length:5.1f} steps")
+            print(f"   • Success Rate (last 100): {current_success_rate:.1%}")
+            print(f"   • Targets Reached (last 50): {recent_targets}/50")
+            print(f"   • Current Episode: {episode_reward:.2f} reward, {episode_length} steps, {'✅' if target_reached else '❌'}")
+        
+        # Detailed episode logging every 10 episodes
+        if show_progress and (episode + 1) % 10 == 0:
+            status = "SUCCESS" if target_reached else "TIMEOUT" if episode_length >= max_steps else "FAILURE"
+            print(f"Episode {episode + 1:4d}: {status:7s} | Reward: {episode_reward:6.2f} | Steps: {episode_length:3d} | Success Rate: {current_success_rate:.1%}")
+    
+    # Final training summary
+    if show_progress:
+        print("\n" + "=" * 60)
+        print("🎯 TRAINING COMPLETE!")
+        print("=" * 60)
+        final_success_rate = success_rate[-1] if success_rate else 0
+        total_targets = sum(targets_reached)
+        print(f"📊 Final Statistics:")
+        print(f"   • Total Episodes: {episodes}")
+        print(f"   • Final Success Rate: {final_success_rate:.1%}")
+        print(f"   • Total Targets Reached: {total_targets}/{episodes}")
+        print(f"   • Average Reward (last 100): {np.mean(episode_rewards[-100:]):.2f}")
+        print(f"   • Average Episode Length: {np.mean(episode_lengths[-100:]):.1f} steps")
     
     # Save model if requested
     if save_model:
         model_path = f"continuous_ppo_model_{episodes}ep.pth"
         agent.save_model(model_path)
-        print(f"Model saved to {model_path}")
+        print(f"💾 Model saved to {model_path}")
     
     # Plot training curves
     if show_progress:
@@ -249,22 +299,26 @@ def evaluate_trained_agent(model_path: str,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train PPO agent in continuous environment")
-    parser.add_argument("--grid", type=str, default="grid_configs/small_grid.npy",
+    parser.add_argument("--grid", type=str, default="grid_configs/example_grid.npy",
                        help="Path to grid configuration file")
     parser.add_argument("--episodes", type=int, default=1000,
                        help="Number of training episodes")
     parser.add_argument("--max-steps", type=int, default=500,
                        help="Maximum steps per episode")
-    parser.add_argument("--step-size", type=float, default=0.1,
-                       help="Step size for agent movement")
-    parser.add_argument("--lr", type=float, default=3e-4,
-                       help="Learning rate")
-    parser.add_argument("--gamma", type=float, default=0.99,
-                       help="Discount factor")
+    parser.add_argument("--step-size", type=float, default=0.2,
+                       help="Step size for agent movement (default: 0.2)")
+    parser.add_argument("--lr", type=float, default=3e-3,
+                       help="Learning rate (default: 0.003)")
+    parser.add_argument("--gamma", type=float, default=0.98,
+                       help="Discount factor (default: 0.98)")
     parser.add_argument("--no-save", action="store_true",
                        help="Don't save the trained model")
     parser.add_argument("--evaluate", type=str, default=None,
                        help="Path to model to evaluate (skips training)")
+    parser.add_argument("--visualize", action="store_true",
+                       help="Enable live visualization during training")
+    parser.add_argument("--visualize-every", type=int, default=100,
+                       help="Visualize every N episodes")
     
     args = parser.parse_args()
     
@@ -288,5 +342,7 @@ if __name__ == "__main__":
             learning_rate=args.lr,
             gamma=args.gamma,
             save_model=not args.no_save,
-            show_progress=True
+            show_progress=True,
+            enable_visualization=args.visualize,
+            visualize_every=args.visualize_every
         )
