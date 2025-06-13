@@ -45,7 +45,7 @@ class ContinuousEnvironment:
         if self.agent_start_pos is not None:
             pos = (self.agent_start_pos[0], self.agent_start_pos[1])
             if self.grid[pos] == 0:
-                self.agent_pos = np.array([pos[0] + 0.5, pos[1] + 0.5], dtype=np.float32)
+                self.agent_pos = np.array([pos[0], pos[1]], dtype=np.float32)
             else:
                 raise ValueError("Cannot place agent on obstacle or target.")
         else:
