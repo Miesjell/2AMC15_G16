@@ -40,7 +40,9 @@ class PolicyNetwork(nn.Module):
     def forward(self, state, temperature: float = 1.0):
         """Forward pass through the policy network."""
         x = F.relu(self.fc1(state))
+        x = self.dropout1(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
         x = F.relu(self.fc3(x))
         #scale logits instead of probabilites by getting logits first and dividing by temperature:
         logits = self.action_head(x)
