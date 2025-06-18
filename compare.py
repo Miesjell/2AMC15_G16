@@ -33,7 +33,7 @@ def plot_learning_curves(agents, results_dir):
     plt.show()
 
 # Example usage
-agents = ["DQNAgent", "RandomAgent", "NullAgent"]
+agents = ["DQNAgent"]
 results_dir = Path("learning_curves")
 plot_learning_curves(agents, results_dir)
 
