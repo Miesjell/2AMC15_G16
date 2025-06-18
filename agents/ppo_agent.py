@@ -40,9 +40,7 @@ class PolicyNetwork(nn.Module):
     def forward(self, state):
         """Forward pass through the policy network."""
         x = F.relu(self.fc1(state))
-        x = self.dropout1(x)
         x = F.relu(self.fc2(x))
-        x = self.dropout2(x)
         x = F.relu(self.fc3(x))
         action_logits = self.action_head(x)
         return F.softmax(action_logits, dim=-1)
