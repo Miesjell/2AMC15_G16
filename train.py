@@ -1,378 +1,164 @@
-"""
-Train your RL Agent in this file.
-Train your RL Agent in this file.
-"""
 
 from argparse import ArgumentParser
-import importlib
 from pathlib import Path
-import re
 import matplotlib.pyplot as plt
-from tqdm import trange
+import numpy as np
 from datetime import datetime
 import csv
-import numpy as np
+import os
+from tqdm import trange
 
-try:
-    from world import Environment
-    from world.continuousEnvironment import ContinuousEnvironment
-
-    from agents.random_agent import RandomAgent
-except ModuleNotFoundError:
-    from os import path
-    from os import pardir
-    import sys
-
-    root_path = path.abspath(
-        path.join(path.join(path.abspath(__file__), pardir), pardir)
-    )
-    if root_path not in sys.path:
-        sys.path.extend(root_path)
-    from world import Environment
-    from world.continuousEnvironment import ContinuousEnvironment
-
-    from agents.random_agent import RandomAgent
-    from agents.dqn_agent import DqnAgent
+from world.continuousEnvironment import ContinuousEnvironment as Environment
+from agents.stable_baselines3_agent import StableBaselines3Agent
 
 
 def parse_args():
-    p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
-    p.add_argument(
-        "GRID",
-        type=Path,
-        nargs="+",
-        help="Paths to the grid file to use. There can be more than one.",
-    )
-    p.add_argument(
-        "--no_gui", action="store_true", help="Disables rendering to train faster"
-    )
-    p.add_argument(
-        "--sigma",
-        type=float,
-        default=0.1,
-        help="Sigma value for the stochasticity of the environment.",
-    )
-    p.add_argument(
-        "--fps",
-        type=int,
-        default=30,
-        help="Frames per second to render at. Only used if no_gui is not set.",
-    )
-    p.add_argument(
-        "--iter", type=int, default=1000, help="Number of iterations to go through."
-    )
-    p.add_argument(
-        "--random_seed",
-        type=int,
-        default=0,
-        help="Random seed value for the environment.",
-    )
-    p.add_argument(
-        "-a",
-        "--agent",
-        type=str,
-        default="RandomAgent",
-        help="Name of the agent class to use (e.g., RandomAgent)",
-    )
-    p.add_argument(
-        "-e",
-        "--episodes",
-        type=int,
-        default=1,
-    )
+    p = ArgumentParser(description="RL Trainer with Stable-Baselines3")
+    p.add_argument("GRID", type=Path, nargs="+", help="Paths to the grid file(s)")
+    p.add_argument("--no_gui", action="store_true")
+    p.add_argument("--sigma", type=float, default=0.1)
+    p.add_argument("--fps", type=int, default=30)
+    p.add_argument("--iter", type=int, default=1000)
+    p.add_argument("--random_seed", type=int, default=0)
+    p.add_argument("-a", "--algorithm", type=str, default="DQN")
+    p.add_argument("-e", "--episodes", type=int, default=100)
+    p.add_argument("--eval_freq", type=int, default=100)
+    p.add_argument("--save_model", action="store_true")
+    p.add_argument("--load_model", type=str, default=None)
     return p.parse_args()
 
 
-def load_agent(agent_name: str, env):
-    """
-    Dynamically load and instantiate an agent class based on its name.
+def train_agent_episodic(agent, env, episodes, max_steps, eval_freq=100):
+    episode_numbers = []
+    episode_returns = []
+    successful_episodes = 0
 
-    Args:
-        agent_name: Name of the agent class to load (e.g., "RandomAgent").
-        This should be the exact name of the class, not the module.
-        The class should be defined in a module named after the class in snake_case.
-        For example, "RandomAgent" should be in a module named "random_agent.py".
+    print("🚀 Starting training with better exploration...")
 
-    Returns:
-        An instance of the specified agent class
-    """
-    try:
-        # convert to snake_case for module name
-        # Example: "RandomAgent" -> "random_agent"
-        module_name = re.sub(r"(?<!^)(?=[A-Z])", "_", agent_name).lower()
+    # Pre-fill the replay buffer
+    print("📦 Pre-filling replay buffer with random steps...")
+    agent.model.learn(total_timesteps=5000, reset_num_timesteps=True)
 
-        # Import module
-        module = importlib.import_module(f"agents.{module_name}")
+    for episode in trange(episodes):
+        obs = agent.wrapped_env.reset()
+        obs = obs[0]
+        if hasattr(agent, 'reset'):
+            agent.reset()
 
-        # Get the class and instantiate it
-        agent_class = getattr(module, agent_name)
-        print(f"Loaded agent class: {agent_class}")
-        # pass grid to dqn
-        if agent_name == "DQNAgent":
-            grid_shape = env.grid.shape  # (H, W)
-            return agent_class(env, grid_shape=grid_shape)
-        else:
-            return agent_class(env)
-        #return agent_class(env)
-    except (ImportError, AttributeError) as e:
-        print(f"Error loading agent '{agent_name}': {e}")
-        print("Falling back to RandomAgent.")
-        return RandomAgent()
+        episode_reward = 0
+        steps = 0
+        goal_reached = False
+
+        for step in range(max_steps):
+            action = agent.take_action(obs)
+            next_obs, reward, done, info = agent.wrapped_env.step([action])
+            next_obs = next_obs[0]
+            reward = reward[0]
+            done = done[0]
+
+            if reward == 100.0:
+                goal_reached = True
+                successful_episodes += 1
+                print(f"🎯 TARGET REACHED! Episode {episode}, Step {step} (Success #{successful_episodes})")
+
+            episode_reward += reward
+            obs = next_obs
+            steps += 1
+
+            if done:
+                break
+
+        # Start training earlier and only every 5 episodes
+        # if episode % 2 == 0:
+        agent.model.learn(total_timesteps=200, reset_num_timesteps=False)
+
+        if episode % 100 == 0:
+            success_rate = successful_episodes / max(1, episode + 1) * 100
+            print(f"Episode {episode}: Reward={episode_reward:.2f}, Steps={steps}, Success Rate={success_rate:.1f}%")
+
+        if episode % eval_freq == 0:
+            total_return = Environment.evaluate_agent(
+                grid_fp=env.grid_fp,
+                agent=agent,
+                max_steps=max_steps,
+                sigma=env.sigma,
+                agent_start_pos=env.agent_start_pos,
+                show_images=False,
+                verbose=False
+            )
+            print(f"Eval Episode {episode}: Return={total_return:.2f}")
+            episode_numbers.append(episode + 1)
+            episode_returns.append(total_return)
+
+    final_success_rate = successful_episodes / episodes * 100
+    print(f"Training completed. Final success rate: {final_success_rate:.1f}% ({successful_episodes}/{episodes})")
+
+    return episode_numbers, episode_returns
 
 
-def main(
-    grid_paths: list[Path],
-    no_gui: bool,
-    iters: int,
-    fps: int,
-    sigma: float,
-    random_seed: int,
-    agent_name: str,
-    episodes: int,
-):
-    """Main loop of the program."""
 
-    for grid in grid_paths:
+def main():
+    args = parse_args()
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("learning_curves", exist_ok=True)
 
+    for grid in args.GRID:
+        print(f"Training on grid: {grid}")
+        start_pos = [8, 2.2] if grid.name != "mainrestaurant.npy" else [8, 2]
 
-        startPos = None
+        from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+        from agents.stable_baselines3_agent import StableBaselines3Agent, GymnasiumWrapper
 
-        # Setting proper start positions for each grid
-        if grid.name == "A1_grid.npy":
-            startPos = [3,11]
-        elif grid.name == "Maze_Grid.npy":
-            startPos = [1,5]
-        elif grid.name == "Risk_Grid.npy":
-            startPos = [2,8]
-        elif grid.name == "Open_Field.npy":
-            startPos = [2,7]
-        elif grid.name == "Open_Field_2.npy":
-            startPos = [2,7]
-        
-
-        # Set up the environment
-        env = ContinuousEnvironment(
-        #env = Environment(
-            grid,
-            no_gui,
-            sigma=sigma,
-            target_fps=fps,
-            random_seed=random_seed,
-            agent_start_pos = startPos,
+        base_env = Environment(
+            grid_fp=grid,
+            no_gui=args.no_gui,
+            sigma=args.sigma,
+            target_fps=args.fps,
+            random_seed=args.random_seed,
+            agent_start_pos=start_pos,
+            agent_size = 0.5
         )
 
-        episode_numbers = []
-        episode_returns = []
+        wrapped_env = DummyVecEnv([lambda: GymnasiumWrapper(base_env)])
+        env = VecNormalize(wrapped_env, norm_obs=True, norm_reward=False)
 
-        # Initialize agent
-        agent = load_agent(agent_name, env)
-        print(f"Agent: {agent}")
+        agent = StableBaselines3Agent(env, args.algorithm)
 
-        if agent.__str__() == "MC_Agent":
-            # Corrected and updated training loop: Run 'iters' full episodes
-            for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
-                state = env.reset(agent_start_pos=startPos,)
-                step_count = 0
-                episode_data = []
-                
-                while True:
-                    action = agent.take_action(state)
-                    next_state, reward, terminated, info = env.step(action)
-                    episode_data.append((state, info["actual_action"], reward))
-                    step_count += 1
-                    if terminated or step_count >= getattr(agent, "max_episode_len", 3000):
-                    
-                        #if info.get("target_reached", False):   # only successful eps
-                        agent.update(episode_data)
-                        break
+        if args.load_model:
+            print(f"Loading model from {args.load_model}")
+            agent.load(args.load_model)
 
-                    state = next_state
-                agent.epsilon = max(0.05, agent.epsilon * 0.995)
+        print(f"Training {args.algorithm} for {args.episodes} episodes...")
+        episode_numbers, episode_returns = train_agent_episodic(
+            agent, base_env, args.episodes, args.iter, args.eval_freq
+        )
 
-                # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
-                Environment.evaluate_agent(grid, agent, iters, sigma,
-                                        random_seed=random_seed,
-                                        agent_start_pos=startPos,)
-                if episode % 50 == 0:
-                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=startPos)
-                    episode_returns.append(total_return)
-                    episode_numbers.append(episode + 1)
+        plt.figure()
+        plt.plot(episode_numbers, episode_returns, label="Episode Return")
+        plt.xlabel("Episode")
+        plt.ylabel("Return")
+        plt.title(f"{args.algorithm} on {grid.stem}")
+        plt.grid(True)
 
-            # Plot learning curve
-            plt.plot(episode_numbers, episode_returns, label="Episode Return")
-            plt.xlabel("Episode")
-            plt.ylabel("Simple Total Reward")
-            plt.title("Learning Curve")
-            plt.grid(True)
-            # Save plot to file
-            grid_dir = Path("learning_curves") / grid.stem
-            grid_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Add timestamp to filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
+        curve_dir = Path("learning_curves") / grid.stem
+        curve_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        plt.savefig(curve_dir / f"{grid.stem}_{timestamp}.png")
 
-            # Save data to CSV to make one learning curve with multiple agents later
-            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
-            csv_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(csv_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["episode", "return"])
-                writer.writerows(zip(episode_numbers, episode_returns))
+        with open(curve_dir / f"{args.algorithm}_curve.csv", "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["episode", "return"])
+            writer.writerows(zip(episode_numbers, episode_returns))
 
-        # Training for DQN
-        elif agent.__class__.__name__ == "DqnMlpAgent":
-            print("Training DQN Agent...")
+        plt.close()
 
-            # Warm up replay buffer with random actions
-            print("Warming up replay buffer...")
-            state = env.reset(agent_start_pos=startPos)
-            for _ in range(1000):  # Increased warmup
-                action = np.random.randint(0, agent.action_dim)
-                next_state, reward, terminated, _ = env.step(action)
-                agent.update(state, env.grid.copy(), reward, action, next_state, env.grid.copy(), terminated)
-                if terminated:
-                    state = env.reset(agent_start_pos=startPos)
-                else:
-                    state = next_state
+        if args.save_model:
+            model_path = f"models/{args.algorithm}_{grid.stem}_{timestamp}"
+            agent.save(model_path)
+            print(f"Model saved to {model_path}")
 
-            print(f"Replay buffer warmed up with {len(agent.buffer)} experiences")
-
-            # Training loop
-            for episode in trange(episodes, desc="Training episodes"):
-                state = env.reset(agent_start_pos=startPos)
-                episode_reward = 0
-                steps_in_episode = 0
-
-                for step in range(iters):
-                    # Take action
-                    action = agent.take_action(state, env.grid.copy())
-                    next_state, reward, terminated, info = env.step(action)
-
-                    # Store experience
-                    agent.update(state, env.grid.copy(), reward, action,
-                                 next_state, env.grid.copy(), terminated)
-
-                    episode_reward += reward
-                    steps_in_episode += 1
-                    state = next_state
-
-                    # Perform learning updates more frequently
-                    if len(agent.buffer) >= agent.batch_size and step % 4 == 0:
-                        loss = agent.update_batch(num_updates=1)
-
-                    if terminated:
-                        break
-
-                # Decay epsilon after each episode
-                agent.decay_epsilon()
-
-                # Logging
-                # if episode % 10 == 0:
-                #     print(f"Episode {episode}: Reward={episode_reward:.2f}, "
-                #           f"Steps={steps_in_episode}, Epsilon={agent.epsilon:.3f}")
-
-                # Evaluation every 50 episodes
-                if episode % 200 == 0:
-                    print(f"Evaluating at episode {episode}...")
-                    # Set epsilon to 0 for evaluation (pure exploitation)
-                    old_epsilon = agent.epsilon
-                    agent.epsilon = 0.0
-
-                    total_return = ContinuousEnvironment.evaluate_agent(
-                        grid, agent, iters, sigma,
-                        random_seed=random_seed,
-                        agent_start_pos=startPos
-                    )
-
-                    # Restore epsilon
-                    agent.epsilon = old_epsilon
-
-                    episode_returns.append(total_return)
-                    episode_numbers.append(episode + 1)
-                    print(f"Evaluation return: {total_return}")
-
-            # Plot learning curve
-            plt.figure(figsize=(10, 6))
-            plt.plot(episode_numbers, episode_returns, label="Episode Return", marker='o')
-            plt.xlabel("Episode")
-            plt.ylabel("Total Return")
-            plt.title(f"DQN Learning Curve - {grid.stem}")
-            plt.legend()
-            plt.grid(True)
-
-            # Save plot
-            grid_dir = Path("learning_curves") / grid.stem
-            grid_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            plt.savefig(grid_dir / f"{grid.stem}_DQN_curve_{timestamp}.png")
-            plt.close()
-
-            # Save data to CSV
-            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
-            csv_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(csv_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["episode", "return"])
-                writer.writerows(zip(episode_numbers, episode_returns))
+        print(f"Training completed. Results saved to {curve_dir}")
 
 
-        else:
-
-            # Always reset the environment to initial state
-            state = env.reset()
-            for episode, _ in enumerate(trange(episodes, desc="Training episodes")):
-                state = env.reset()  # Always reset the environment to initial state
-                if hasattr(agent, "reset"):
-                    agent.reset()
-
-                for _ in range(iters):
-                    action = agent.take_action(state)
-                    state, reward, terminated, info = env.step(action)
-                    agent.update(state, reward, info["actual_action"])
-                    if terminated:
-                        break
-
-                # Evaluate the agent and append simple total reward and episode number to lists. Evaluate per x episodes!
-                if episode % 50 == 0:
-                    total_return = Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=startPos)
-                    episode_returns.append(total_return)
-                    episode_numbers.append(episode + 1)
-
-                agent.prev_state = None
-                agent.prev_action = None
-
-            # Plot learning curve
-            plt.plot(episode_numbers, episode_returns, label="Episode Return")
-            plt.xlabel("Episode")
-            plt.ylabel("Simple Total Reward")
-            plt.title("Learning Curve")
-            plt.grid(True)
-            # Save plot to file
-            grid_dir = Path("learning_curves") / grid.stem
-            grid_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Add timestamp to filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            plt.savefig(grid_dir / f"{grid.stem}_curve_{timestamp}.png")
-            
-            # Save data to CSV to make one learning curve with multiple agents later
-            csv_path = Path("learning_curves") / f"{agent.__class__.__name__}_curve.csv"
-            csv_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(csv_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["episode", "return"])
-                writer.writerows(zip(episode_numbers, episode_returns))
-
-if __name__ == '__main__':
-    args = parse_args()
-    main(
-        args.GRID,
-        args.no_gui,
-        args.iter,
-        args.fps,
-        args.sigma,
-        args.random_seed,
-        args.agent,
-        args.episodes,
-    )
+if __name__ == "__main__":
+    main()
