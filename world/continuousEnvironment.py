@@ -43,11 +43,8 @@ class ContinuousEnvironment:
 
     def _initialize_agent_pos(self):
         if self.agent_start_pos is not None:
-            pos = (self.agent_start_pos[0], self.agent_start_pos[1])
-            if self.grid[pos] == 0:
-                self.agent_pos = np.array([pos[0], pos[1]], dtype=np.float32)
-            else:
-                raise ValueError("Cannot place agent on obstacle or target.")
+            # Use the exact floating point position without any conversion or validation
+            self.agent_pos = np.array([self.agent_start_pos[0], self.agent_start_pos[1]], dtype=np.float32)
         else:
             zeros = np.where(self.grid == 0)
             idx = random.randint(0, len(zeros[0]) - 1)

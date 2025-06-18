@@ -22,7 +22,7 @@ def parse_args():
     p.add_argument("--no_gui", action="store_true")
     p.add_argument("--sigma", type=float, default=0.1)
     p.add_argument("--fps", type=int, default=30)
-    p.add_argument("--iter", type=int, default=1000)
+    p.add_argument("--iter", type=int, default=2000)
     p.add_argument("--random_seed", type=int, default=0)
     p.add_argument("-a", "--agent", type=str, default="RandomAgent")
     p.add_argument("-e", "--episodes", type=int, default=100)
