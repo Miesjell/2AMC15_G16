@@ -14,7 +14,12 @@ def load_agent(agent_name: str, env):
     module_name = ''.join(['_' + c.lower() if c.isupper() else c for c in agent_name]).lstrip('_')
     module = importlib.import_module(f"agents.{module_name}")
     agent_class = getattr(module, agent_name)
-    return agent_class(env)
+
+    if agent_name.lower() == "ppoagent":
+        return agent_class(state_dim=6, action_dim=4)
+    else:
+        return agent_class(env)
+
 
 def parse_args():
     p = ArgumentParser(description="RL Trainer")
@@ -51,16 +56,31 @@ def main(grid_paths, no_gui, iters, fps, sigma, random_seed, agent_name, episode
 
         for episode in trange(episodes, desc="Training episodes"):
             state = env.reset(agent_start_pos=start_pos)
+
             if hasattr(agent, "reset"):
                 agent.reset()
 
-            for _ in range(iters):
-                action = agent.take_action(state)
-                state, reward, done, info = env.step(action)
-                agent.update(state, reward, info.get("actual_action", None))
-                if done:
-                    break
+            if agent_name.lower() == "dqnagent":
+                for _ in range(iters):
+                    action = agent.take_action(state)
+                    next_state, reward, done, info = env.step(action)
+                    agent.update(next_state, reward, info.get("actual_action", action))
+                    state = next_state
+                    if done:
+                        break
 
+            else:  # PPO-like agent
+                for _ in range(iters):
+                    action = agent.take_action(state)
+                    next_state, reward, done, info = env.step(action)
+                    agent.update(state, reward, info.get("actual_action", action))
+                    state = next_state
+                    if done:
+                        break
+                if hasattr(agent, "finish_episode"):
+                    agent.finish_episode()
+
+            # Evaluation every 50 episodes
             if episode % 50 == 0:
                 total_return = Environment.evaluate_agent(
                     grid_fp=grid,
@@ -75,6 +95,7 @@ def main(grid_paths, no_gui, iters, fps, sigma, random_seed, agent_name, episode
                 episode_returns.append(total_return)
                 print(f"Eval Episode {episode}: Return={total_return:.2f}")
 
+            # Cleanup if needed
             if hasattr(agent, "prev_state"):
                 agent.prev_state = None
                 agent.prev_action = None
