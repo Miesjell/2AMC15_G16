@@ -109,8 +109,9 @@ class ContinuousEnvironment:
             return  # collision
         self.agent_pos = new_pos
         if cell == 3:
-            self.grid[grid_pos] = 0
-            self.terminal_state = (np.sum(self.grid == 3) == 0)
+            #self.grid[grid_pos] = 0 not required as we only have one target
+            #self.terminal_state = (np.sum(self.grid == 3) == 0)
+            self.terminal_state = True
 
     @staticmethod
     def distance_sensor(grid, agent_pos):
@@ -193,9 +194,10 @@ class ContinuousEnvironment:
             "total_steps": len(path),
             "total_agent_moves": len(path),
             "total_failed_moves": 0,
-            "total_targets_reached": int(np.sum(env.grid == 3) == 0),
+            "success": env.terminal_state,
+            #"total_targets_reached": int(np.sum(env.grid == 3) == 0),
         }
         img = visualize_path(initial, path)
         fname = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
         save_results(fname, env.world_stats, img, show_images)
-        return total
+        return total, env.terminal_state, len(path), img

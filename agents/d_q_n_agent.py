@@ -101,7 +101,7 @@ class DQNAgent(BaseAgent):
         batch = random.sample(self.replay_buffer, self.batch_size)
         states, actions, rewards, next_states = zip(*batch)
 
-        states = torch.FloatTensor(states)
+        states = torch.FloatTensor(np.array(states)) # changed for speed
         actions = torch.LongTensor(actions).unsqueeze(1)
         rewards = torch.FloatTensor(rewards).unsqueeze(1)
         next_states = torch.FloatTensor(next_states)
