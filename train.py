@@ -6,6 +6,7 @@ from tqdm import trange
 from datetime import datetime
 import csv
 import numpy as np
+import pickle
 
 from world.continuousEnvironment import ContinuousEnvironment as Environment
 from agents.random_agent import RandomAgent
@@ -31,8 +32,6 @@ def parse_args():
     p.add_argument("--save_images", action="store_true", help="Save path visualization images")
     return p.parse_args()
 
-from world.continuousEnvironment import ContinuousEnvironment
-
 def run_evaluation(grid_paths, agent_name, sigma, iters, random_seed, episodes, show_images, save_images):
     results_dir = Path("evaluation_results")
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -56,7 +55,14 @@ def run_evaluation(grid_paths, agent_name, sigma, iters, random_seed, episodes, 
             random_seed=random_seed,
             agent_start_pos=start_pos,
         )
+
+        agent_save_path = Path("learning_curves") / f"{agent_name}_final_agent.pkl"
+        with open(agent_save_path, "rb") as f:
+            agent = pickle.load(f)
+        agent.env = env  # Ensure the agent has the correct environment
+        print(f"Loaded agent: {agent_name} from {agent_save_path}")
   
+        from world.continuousEnvironment import ContinuousEnvironment
         for episode in range(episodes):
             agent = load_agent(agent_name, env)  
             total, success, steps, img = ContinuousEnvironment.evaluate_agent(
@@ -134,6 +140,11 @@ def main(grid_paths, no_gui, iters, fps, sigma, random_seed, agent_name, episode
                 writer.writerow([episode + 1, total_return, int(success)])
 
             print(f"Episode {episode + 1}: Total Return = {total_return} and Success = {success}")
+
+    agent_save_path = results_dir / f"{agent_name}_final_agent.pkl"
+    with open(agent_save_path, "wb") as f:
+        pickle.dump(agent, f)
+    print(f"Agent saved to {agent_save_path}")
 
 # Run eveluating of the trained agend
 
