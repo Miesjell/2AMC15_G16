@@ -166,7 +166,7 @@ class ContinuousEnvironment:
         return reward
     
     def _reward_without_non_visited(self, grid, agent_pos, agent_size) -> float:
-        print("Using reward function without non-visited bonus.")
+        #print("Using reward function without non-visited bonus.")
         half = agent_size / 2.0
         corners = [
             (agent_pos[0] - half, agent_pos[1] - half),
@@ -183,7 +183,7 @@ class ContinuousEnvironment:
                 return 100.0
 
         # Step penalty encourages shorter paths
-        reward = -0.1
+        reward = -0.2
 
         # Optional: small bonus to avoid narrow corridors
         d = self.distance_sensor(grid, agent_pos)
@@ -193,7 +193,10 @@ class ContinuousEnvironment:
 
         # Still track visited, but don’t reward
         cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
-        self.visited.add(cell_coord)
+        if cell_coord in self.visited:
+            reward -= 0.1 
+        else:
+            self.visited.add(cell_coord)
 
         return reward
 
