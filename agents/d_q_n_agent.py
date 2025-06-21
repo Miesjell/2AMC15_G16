@@ -101,10 +101,16 @@ class DQNAgent(BaseAgent):
         batch = random.sample(self.replay_buffer, self.batch_size)
         states, actions, rewards, next_states = zip(*batch)
 
-        states = torch.FloatTensor(np.array(states)) # changed for speed
-        actions = torch.LongTensor(actions).unsqueeze(1)
-        rewards = torch.FloatTensor(rewards).unsqueeze(1)
-        next_states = torch.FloatTensor(next_states)
+        # Speed contrainst
+        # states = torch.FloatTensor(np.array(states)) # changed for speed
+        # actions = torch.LongTensor(actions).unsqueeze(1)
+        # rewards = torch.FloatTensor(rewards).unsqueeze(1)
+        # next_states = torch.FloatTensor(next_states)
+
+        states = torch.from_numpy(np.stack(states)).float()
+        actions = torch.from_numpy(np.array(actions)).long().unsqueeze(1)
+        rewards = torch.from_numpy(np.array(rewards)).float().unsqueeze(1)
+        next_states = torch.from_numpy(np.stack(next_states)).float()   
 
         curr_q = self.policy_net(states).gather(1, actions)
 
