@@ -163,6 +163,41 @@ class ContinuousEnvironment:
             self.visited.add(cell_coord)
 
         return reward
+    
+    def _reward_without_non_visited(self, grid, agent_pos, agent_size) -> float:
+        #print("Using reward function without non-visited bonus.")
+        half = agent_size / 2.0
+        corners = [
+            (agent_pos[0] - half, agent_pos[1] - half),
+            (agent_pos[0] - half, agent_pos[1] + half),
+            (agent_pos[0] + half, agent_pos[1] - half),
+            (agent_pos[0] + half, agent_pos[1] + half),
+        ]
+        for corner in corners:
+            gp = tuple(np.floor(corner).astype(int))
+            cell = grid[gp]
+            if cell in (1, 2):
+                return -5.0
+            if cell == 3:
+                return 1000.0
+
+        # Step penalty encourages shorter paths
+        reward = -0.2
+
+        # Optional: small bonus to avoid narrow corridors
+        d = self.distance_sensor(grid, agent_pos)
+        max_view = float(grid.shape[0] + grid.shape[1])
+        opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
+        reward += 0.05 * opening_bonus
+
+        # Still track visited, but don’t reward
+        cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
+        if cell_coord in self.visited:
+            reward -= 0.05
+        else:
+            self.visited.add(cell_coord)
+
+        return reward
 
     @staticmethod
     def evaluate_agent(grid_fp, agent, max_steps, sigma=0.0, agent_start_pos=None, random_seed=0, show_images=False):
@@ -194,8 +229,10 @@ class ContinuousEnvironment:
             "total_agent_moves": len(path),
             "total_failed_moves": 0,
             "total_targets_reached": int(np.sum(env.grid == 3) == 0),
+            "success": env.terminal_state,
         }
         img = visualize_path(initial, path)
         fname = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
         save_results(fname, env.world_stats, img, show_images)
-        return total
+        # Return all relevant info for unpacking
+        return total, env.terminal_state, len(path), img
