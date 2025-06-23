@@ -170,7 +170,7 @@ class ContinuousEnvironment:
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
-    
+
         return reward
     
     def _reward_without_non_visited(self, grid, agent_pos, agent_size) -> float:
