@@ -10,6 +10,7 @@ import pickle
 
 from world.continuousEnvironment import ContinuousEnvironment as Environment
 from agents.random_agent import RandomAgent
+#from agents.ppo_agent import PPOAgent
 
 def load_agent(agent_name: str, env):
     module_name = ''.join(['_' + c.lower() if c.isupper() else c for c in agent_name]).lstrip('_')
@@ -60,7 +61,7 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
             random_seed=random_seed,
             agent_start_pos=start_pos,
         )
-        env.reward_fn = env._reward_without_non_visited  # Use custom reward function
+        #env.reward_fn = env._reward_without_non_visited  # Use custom reward function
         agent = load_agent(agent_name, env)
         print(f"Loaded agent: {agent_name}")
 
@@ -68,16 +69,19 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
             state = env.reset(agent_start_pos=start_pos)
             total_return = 0
             success = False
+            steps = 0
             for _ in range(iters):
                 action = agent.take_action(state)
                 state, reward, done, info = env.step(action)
                 agent.update(state, reward, info.get("actual_action", None))
+                steps += 1
+                total_return += reward
 
-                # PPO-specific success handling
-                if isinstance(agent, PPOAgent) and info.get("target_reached", False):
-                    agent.goal_reached_once = True
-                    agent.entropy_coef = 0.0
-                    agent.buffer = []
+                # # PPO-specific success handling
+                # if isinstance(agent, PPOAgent) and info.get("target_reached", False):
+                #     agent.goal_reached_once = True
+                #     agent.entropy_coef = 0.0
+                #     agent.buffer = []
 
                 if done:
                     success = True
@@ -155,6 +159,19 @@ def main():
             args.show_images, args.save_images
         )
 
+if __name__ == "__main__":
+    args = parse_args()
+    # main(
+    #     args.GRID,
+    #     args.no_gui,
+    #     args.iter,
+    #     args.fps,
+    #     args.sigma,
+    #     args.random_seed,
+    #     args.agent,
+    #     args.episodes,
+    # )
+    main()
 
 # def run_evaluation(grid_paths, agent_name, sigma, iters, random_seed, episodes, show_images, save_images):
 #     results_dir = Path("evaluation_results")
@@ -272,15 +289,3 @@ def main():
 
 # Run eveluating of the trained agend
 
-if __name__ == "__main__":
-    args = parse_args()
-    main(
-        args.GRID,
-        args.no_gui,
-        args.iter,
-        args.fps,
-        args.sigma,
-        args.random_seed,
-        args.agent,
-        args.episodes,
-    )

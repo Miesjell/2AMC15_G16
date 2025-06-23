@@ -101,6 +101,8 @@ class ContinuousEnvironment:
         new_pos = self.agent_pos + step_size * np.array(direction)
 
         reward = self.reward_fn(self.grid, new_pos, self.agent_size)
+        if reward == 100:
+            self.terminal_state = True
         self._move_agent(new_pos)
 
         return self._get_obs(), reward, self.terminal_state, {"actual_action": action}
