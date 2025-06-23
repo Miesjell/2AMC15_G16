@@ -1,2 +1,7 @@
+<<<<<<< HEAD
 grid,return,success,steps
 mainrestaurant.npy,982.4855625,1,41
+=======
+grid,return,success,steps
+mainrestaurant.npy,967.7,1,64
+>>>>>>> 366b1b6b198ba89951e1f27b19ac099c160ca226

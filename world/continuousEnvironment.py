@@ -169,14 +169,8 @@ class ContinuousEnvironment:
         d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
-        reward += 0.1 * opening_bonus
+        reward += 0.2 * opening_bonus
 
-        cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
-        if cell_coord in self.visited:
-            reward -= 0.1 
-        else:
-            self.visited.add(cell_coord)
-    
         return reward
     
     def _reward_without_non_visited(self, grid, agent_pos, agent_size) -> float:
