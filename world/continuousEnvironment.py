@@ -28,6 +28,7 @@ class ContinuousEnvironment:
         self.agent_size = agent_size
         self.terminal_state = False
         self.sigma = sigma
+        self.target_reward = 1000
 
         self.no_gui = no_gui
         self.target_spf = 0.0 if target_fps <= 0 else 1.0 / target_fps
@@ -101,7 +102,7 @@ class ContinuousEnvironment:
         new_pos = self.agent_pos + step_size * np.array(direction)
 
         reward = self.reward_fn(self.grid, new_pos, self.agent_size)
-        if reward == 100:
+        if reward == self.target_reward:
             self.terminal_state = True
         self._move_agent(new_pos)
 
@@ -157,9 +158,9 @@ class ContinuousEnvironment:
             gp = tuple(np.floor(corner).astype(int))
             cell = grid[gp]
             if cell in (1, 2):
-                return -5.0    # collision penalty
+                return -1.0    # collision penalty
             if cell == 3:
-                return +100.0  # goal reward
+                return +self.target_reward  # goal reward
     
         # 2) Small per-step penalty
         reward = -0.01
