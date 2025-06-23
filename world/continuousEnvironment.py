@@ -100,10 +100,14 @@ class ContinuousEnvironment:
         step_size = 1
         new_pos = self.agent_pos + step_size * np.array(direction)
 
-        reward = self.reward_fn(self.grid, new_pos, self.agent_size)
+        reward, goal_reached = self.reward_fn(self.grid, new_pos, self.agent_size)
+        self.terminal_state = goal_reached
         self._move_agent(new_pos)
 
-        return self._get_obs(), reward, self.terminal_state, {"actual_action": action}
+        return self._get_obs(), reward, self.terminal_state, {
+            "actual_action": action,
+            "target_reached": goal_reached
+        }
 
     def _move_agent(self, new_pos):
         grid_pos = tuple(np.floor(new_pos).astype(int))
@@ -113,7 +117,7 @@ class ContinuousEnvironment:
         self.agent_pos = new_pos
         if cell == 3:
             self.grid[grid_pos] = 0
-            self.terminal_state = (np.sum(self.grid == 3) == 0)
+            # self.terminal_state = (np.sum(self.grid == 3) == 0)
 
     @staticmethod
     def distance_sensor(grid, agent_pos):
@@ -138,7 +142,7 @@ class ContinuousEnvironment:
             c += step
         return distances
 
-    def _default_reward_function(self,grid, agent_pos, agent_size) -> float:
+    def _default_reward_function(self,grid, agent_pos, agent_size) -> tuple[float, bool]:
         import numpy as np
     
         half = agent_size / 2.0
@@ -154,9 +158,9 @@ class ContinuousEnvironment:
             gp = tuple(np.floor(corner).astype(int))
             cell = grid[gp]
             if cell in (1, 2):
-                return -5.0    # collision penalty
+                return -5.0, False
             if cell == 3:
-                return +100.0  # goal reward
+                return 100.0, True
     
         # 2) Small per-step penalty
         reward = -0.01
@@ -167,7 +171,7 @@ class ContinuousEnvironment:
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
     
-        return reward
+        return reward, False
 
 
 
@@ -187,12 +191,15 @@ class ContinuousEnvironment:
         initial = np.copy(env.grid)
         path = [env.agent_pos]
         total = 0.0
+        target_reached = False
 
         for _ in range(max_steps):
             action = agent.take_action(state)
-            state, reward, done, _ = env.step(action)
+            state, reward, done, info = env.step(action)
             total += reward
             path.append(env.agent_pos)
+            if info.get("target_reached", False):
+                target_reached = True
             if done:
                 break
 
@@ -201,7 +208,7 @@ class ContinuousEnvironment:
             "total_steps": len(path),
             "total_agent_moves": len(path),
             "total_failed_moves": 0,
-            "total_targets_reached": int(np.sum(env.grid == 3) == 0),
+            "total_targets_reached": int(target_reached),
         }
         img = visualize_path(initial, path)
         fname = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
