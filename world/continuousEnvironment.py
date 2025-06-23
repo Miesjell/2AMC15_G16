@@ -158,18 +158,24 @@ class ContinuousEnvironment:
             gp = tuple(np.floor(corner).astype(int))
             cell = grid[gp]
             if cell in (1, 2):
-                return -1.0    # collision penalty
+                return -1.0   # collision penalty
             if cell == 3:
                 return +self.target_reward  # goal reward
     
         # 2) Small per-step penalty
-        reward = -0.01
+        reward = -0.1
     
         # 3) “Opening bonus” (encourages moving into open space)
         d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
-        reward += 0.2 * opening_bonus
+        reward += 0.1 * opening_bonus
+
+        cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
+        if cell_coord in self.visited:
+            reward -= 0.1 
+        else:
+            self.visited.add(cell_coord)
     
         return reward
     

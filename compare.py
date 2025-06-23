@@ -1,5 +1,3 @@
-import subprocess
-import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -19,14 +17,14 @@ def plot_learning_curves(agents, results_dir):
 
     plt.figure(figsize=(10, 5))
 
-    # Plot learning curves (only every 50th episode)
+    # Plot learning curves over a window of 50 episodes
     for agent, df in learning_curves.items():
-        df_filtered = df[df["episode"] % 50 == 0]
-        plt.plot(df_filtered["episode"], df_filtered["return"], label=f"{agent} Return")
+        df["return_rolling"] = df["return"].rolling(window=50, min_periods=1).mean()
+        plt.plot(df["episode"], df["return_rolling"], label=f"{agent} Rolling Avg (50)")
 
     plt.title("Learning Curves for All Agents")
     plt.xlabel("Episode")
-    plt.ylabel("Cumulative Reward")
+    plt.ylabel("Total Return (Rolling Avg, window=50)")
     plt.grid(True)
     plt.legend()
     plt.tight_layout()

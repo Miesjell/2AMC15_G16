@@ -46,7 +46,7 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
     csv_file = results_dir / f"{agent_name}_curve.csv"
     with open(csv_file, mode="w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["episode", "return", "success"])
+        writer.writerow(["episode", "return", "success", "steps"])
 
     for grid in grid_paths:
         start_pos = [8, 2]
@@ -89,7 +89,7 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
             with open(csv_file, mode="a", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow([episode + 1, total_return, int(success), steps])
-            print(f"Episode {episode + 1}: Total Return = {total_return} and Success = {success}")
+            print(f"Episode {episode + 1}: Total Return = {total_return} and Success = {success}, Steps = {steps}")
 
         # Save the trained agent after all episodes for this grid
         agent_save_path = results_dir / f"{agent_name}_final_agent.pkl"
