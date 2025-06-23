@@ -6,11 +6,12 @@ from pathlib import Path
 from datetime import datetime
 
 # Define training settings
-agents = ["MonteCarloAgent", "QLearningAgent", "ValueIterationAgent"]
-grid_path = "grid_configs/A1_grid.npy"
-episodes = 501
-sigma = 0.1
+agents = ["DQNAgent", "PPOAgent"]
+grid_path = "grid_configs/mainrestaurant.npy"
+episodes = 1001
+sigma = 0.0
 results_dir = Path("learning_curves")
+gamma = 0.99  # Discount factor for rewards
 
 # Ensure results directory exists
 results_dir.mkdir(parents=True, exist_ok=True)
