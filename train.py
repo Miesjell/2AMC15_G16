@@ -11,6 +11,12 @@ import pickle
 from world.continuousEnvironment import ContinuousEnvironment as Environment
 from agents.random_agent import RandomAgent
 
+def load_agent(agent_name: str, env):
+    module_name = ''.join(['_' + c.lower() if c.isupper() else c for c in agent_name]).lstrip('_')
+    module = importlib.import_module(f"agents.{module_name}")
+    agent_class = getattr(module, agent_name)
+    return agent_class(env)
+
 def parse_args():
     p = ArgumentParser(description="RL Trainer")
     p.add_argument("GRID", type=Path, nargs="+", help="Paths to the grid file(s)")
@@ -42,7 +48,10 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
         writer.writerow(["episode", "return", "success"])
 
     for grid in grid_paths:
-        start_pos = [8, 2.2] if grid.name != "mainrestaurant.npy" else [8, 2]
+        start_pos = [8, 2]
+        if grid.name == "mainrestaurant.npy":
+            start_pos = [8, 2]
+
         env = Environment(
             grid_fp=grid,
             no_gui=no_gui,
@@ -63,7 +72,13 @@ def train_agent(grid_paths, agent_name, no_gui, sigma, fps, random_seed, iters, 
                 action = agent.take_action(state)
                 state, reward, done, info = env.step(action)
                 agent.update(state, reward, info.get("actual_action", None))
-                total_return += reward
+
+                # PPO-specific success handling
+                if isinstance(agent, PPOAgent) and info.get("target_reached", False):
+                    agent.goal_reached_once = True
+                    agent.entropy_coef = 0.0
+                    agent.buffer = []
+
                 if done:
                     success = True
                     break
@@ -259,17 +274,13 @@ def main():
 
 if __name__ == "__main__":
     args = parse_args()
-    # main(
-    #     args.GRID,
-    #     args.no_gui,
-    #     args.iter,
-    #     args.fps,
-    #     args.sigma,
-    #     args.random_seed,
-    #     args.agent,
-    #     args.episodes,
-    #     args.evaluate,
-    #     args.show_images,
-    #     args.save_images,
-    # )
-    main()
+    main(
+        args.GRID,
+        args.no_gui,
+        args.iter,
+        args.fps,
+        args.sigma,
+        args.random_seed,
+        args.agent,
+        args.episodes,
+    )

@@ -33,6 +33,9 @@ class ContinuousEnvironment:
         self.target_spf = 0.0 if target_fps <= 0 else 1.0 / target_fps
         self.gui = None
 
+        self.visited_counts = {}      # counts visits per discrete cell
+        self.intrinsic_beta = 0.3     # weight of curiosity bonus
+
         self.visited = set()  # track visited cells
 
         if reward_fn is None:
@@ -136,8 +139,12 @@ class ContinuousEnvironment:
             c += step
         return distances
 
-    def _default_reward_function(self, grid, agent_pos, agent_size) -> float:
+    def _default_reward_function(self,grid, agent_pos, agent_size) -> float:
+        import numpy as np
+    
         half = agent_size / 2.0
+    
+        # 1) Check collisions & goal at the agent’s four corners
         corners = [
             (agent_pos[0] - half, agent_pos[1] - half),
             (agent_pos[0] - half, agent_pos[1] + half),
@@ -148,21 +155,19 @@ class ContinuousEnvironment:
             gp = tuple(np.floor(corner).astype(int))
             cell = grid[gp]
             if cell in (1, 2):
-                return -5.0
+                return -5.0    # collision penalty
             if cell == 3:
-                return 100.0
-
+                return +100.0  # goal reward
+    
+        # 2) Small per-step penalty
         reward = -0.01
-        d = self.distance_sensor(grid, agent_pos)
+    
+        # 3) “Opening bonus” (encourages moving into open space)
+        d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
-
-        cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
-        if cell_coord not in self.visited:
-            reward += 0.3
-            self.visited.add(cell_coord)
-
+    
         return reward
     
     def _reward_without_non_visited(self, grid, agent_pos, agent_size) -> float:
@@ -199,6 +204,9 @@ class ContinuousEnvironment:
             self.visited.add(cell_coord)
 
         return reward
+
+
+
 
 
     @staticmethod
