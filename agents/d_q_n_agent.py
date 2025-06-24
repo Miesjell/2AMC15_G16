@@ -29,7 +29,7 @@ class DQNAgent(BaseAgent):
     def __init__(
         self,
         env,
-        lr=1e-3,
+        lr=2.5e-4,
         gamma=0.99,
         epsilon_start=1.0,
         epsilon_min=0.01,
