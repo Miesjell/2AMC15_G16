@@ -35,7 +35,7 @@ class PPOAgent(BaseAgent):
         gamma=0.99,
         clip_eps=0.2,
         lr=3e-4,
-        entropy_coef=0.01,
+        entropy_coef=0.05,
         update_epochs=4,
         minibatch_size=64
     ):

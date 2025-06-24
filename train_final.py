@@ -67,10 +67,10 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
             total_return += reward
             steps += 1
 
-            if isinstance(agent, PPOAgent) and info.get("target_reached", False):
-                agent.goal_reached_once = True
-                agent.entropy_coef = 0.0
-                agent.buffer = []
+            # if isinstance(agent, PPOAgent) and info.get("target_reached", False):
+            #     agent.goal_reached_once = True
+            #     agent.entropy_coef = 0.0
+            #     agent.buffer = []
 
             if done:
                 success = True

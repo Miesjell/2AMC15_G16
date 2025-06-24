@@ -8,6 +8,7 @@ from world.helpers import save_results, action_to_direction
 from time import time, sleep
 from datetime import datetime
 import random
+from collections import defaultdict
 
 class ContinuousEnvironment:
     def __init__(
@@ -163,18 +164,23 @@ class ContinuousEnvironment:
                 return 100.0, True
     
         # 2) Small per-step penalty
-        reward = -0.01
+        reward = -0.1
     
         # 3) “Opening bonus” (encourages moving into open space)
         d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
+
+        # 4) Bonus for visiting a new cell
+        cell_coord = (int(agent_pos[0]), int(agent_pos[1]))
+        self.visited_counts = defaultdict(int)
+        if cell_coord not in self.visited:
+            reward += 1.0 
+        reward += 1.0 / np.sqrt(self.visited_counts[cell_coord] + 1)
+        self.visited_counts[cell_coord] += 1
     
         return reward, False
-
-
-
 
     @staticmethod
     def evaluate_agent(grid_fp, agent, max_steps, sigma=0.0, agent_start_pos=None, random_seed=0, show_images=False):
@@ -185,7 +191,7 @@ class ContinuousEnvironment:
             agent_start_pos=agent_start_pos,
             target_fps=-1,
             random_seed=random_seed,
-            agent_size=0.5,
+            agent_size=1.0,
         )
         state = env.reset()
         initial = np.copy(env.grid)
