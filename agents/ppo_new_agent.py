@@ -39,14 +39,15 @@ class PpoNewAgent(BaseAgent):
                  gamma=0.99,
                  clip_eps=0.2,
                  lr=1e-4,
-                 entropy_coef=0.01,
+                 entropy_coef=0.05,
                  value_coef=0.5,
                  max_grad_norm=0.5,
                  seed=0,
                  hidden_size=64,
                  ppo_epochs=4,
                  batch_size=64,
-                 gae_lambda=0.95):
+                 gae_lambda=0.95, 
+                 batch_steps=0):
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -61,6 +62,7 @@ class PpoNewAgent(BaseAgent):
         self.ppo_epochs = ppo_epochs
         self.batch_size = batch_size
         self.gae_lambda = gae_lambda
+        self.batch_steps = batch_steps
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.policy = ActorCritic(state_dim, action_dim, hidden_size).to(self.device)
@@ -94,6 +96,11 @@ class PpoNewAgent(BaseAgent):
     def update(self, state, reward, action, done=False):
         self.rewards.append(reward / 10.0)  # Normalize reward
         self.dones.append(done)
+        self.batch_steps += 1
+
+        if self.batch_steps >= self.batch_size or done:
+            self.finish_episode()
+            self.batch_steps = 0
 
     def finish_episode(self):
         if len(self.rewards) == 0:
@@ -151,7 +158,8 @@ class PpoNewAgent(BaseAgent):
                 surr1 = ratio * batch_advantages
                 surr2 = torch.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * batch_advantages
                 policy_loss = -torch.min(surr1, surr2).mean()
-                value_loss = nn.MSELoss()(values_pred.squeeze(), batch_returns)
+                #value_loss = nn.MSELoss()(values_pred.squeeze(), batch_returns)
+                value_loss = nn.MSELoss()(values_pred.view(-1), batch_returns.view(-1))
 
                 loss = policy_loss + self.value_coef * value_loss - self.entropy_coef * entropy
 

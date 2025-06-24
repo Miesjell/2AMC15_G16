@@ -34,7 +34,7 @@ class ContinuousEnvironment:
         self.gui = None
 
         self.visited_counts = {}      # counts visits per discrete cell
-        self.intrinsic_beta = 0.3     # weight of curiosity bonus
+        self.intrinsic_beta = 1     # weight of curiosity bonus
 
         self.visited = set()  # track visited cells
 
@@ -163,14 +163,23 @@ class ContinuousEnvironment:
                 return 100.0, True
     
         # 2) Small per-step penalty
-        reward = -0.01
+        reward = -0.1
     
         # 3) “Opening bonus” (encourages moving into open space)
         d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
-    
+
+        # 4) Intrinsic curiosity bonus (based on visited cells)
+        grid_pos = tuple(np.floor(agent_pos).astype(int))
+        if grid_pos not in self.visited:
+            self.visited.add(grid_pos)
+            self.visited_counts[grid_pos] = 0
+        self.visited_counts[grid_pos] += 1
+        intrinsic_bonus = self.intrinsic_beta / (1 + self.visited_counts[grid_pos])
+        reward += intrinsic_bonus
+
         return reward, False
 
 
@@ -185,7 +194,7 @@ class ContinuousEnvironment:
             agent_start_pos=agent_start_pos,
             target_fps=-1,
             random_seed=random_seed,
-            agent_size=0.5,
+            agent_size=1.0,
         )
         state = env.reset()
         initial = np.copy(env.grid)
