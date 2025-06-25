@@ -27,6 +27,7 @@ class ContinuousEnvironment:
         self.grid = Grid.load_grid(self.grid_fp).cells
         self.agent_start_pos = agent_start_pos
         self.agent_size = agent_size
+        self.step_size = step_size
         self.terminal_state = False
         self.sigma = sigma
 
