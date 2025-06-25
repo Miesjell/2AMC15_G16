@@ -20,23 +20,20 @@ class ContinuousEnvironment:
         target_fps: int = 30,
         random_seed=None,
         agent_size: float = 1.0,
+        step_size: float = 1.0,
     ):
         random.seed(random_seed)
         self.grid_fp = grid_fp
         self.grid = Grid.load_grid(self.grid_fp).cells
         self.agent_start_pos = agent_start_pos
         self.agent_size = agent_size
+        self.step_size = step_size
         self.terminal_state = False
         self.sigma = sigma
 
         self.no_gui = no_gui
         self.target_spf = 0.0 if target_fps <= 0 else 1.0 / target_fps
         self.gui = None
-
-        self.visited_counts = {}      # counts visits per discrete cell
-        self.intrinsic_beta = 0.3     # weight of curiosity bonus
-
-        self.visited = set()  # track visited cells
 
         if reward_fn is None:
             warn("No reward function provided. Using default reward.")
@@ -96,28 +93,31 @@ class ContinuousEnvironment:
         return np.array([norm_x, norm_y, up, down, left, right], dtype=np.float32)
 
     def step(self, action: int):
-        direction = action_to_direction(action if random.random() > self.sigma else random.randint(0, 3))
-        step_size = 1
-        new_pos = self.agent_pos + step_size * np.array(direction)
+        if random.random() > self.sigma:
+            actual_action = action
+        else:
+            actual_action = random.randint(0, 3)
+        direction = action_to_direction(actual_action)
+        new_pos = self.agent_pos + self.step_size * np.array(direction)
 
         reward, goal_reached = self.reward_fn(self.grid, new_pos, self.agent_size)
         self.terminal_state = goal_reached
         self._move_agent(new_pos)
 
         return self._get_obs(), reward, self.terminal_state, {
-            "actual_action": action,
+            "actual_action": actual_action,
             "target_reached": goal_reached
         }
 
     def _move_agent(self, new_pos):
+        # Here we should implement also checking the corners 
         grid_pos = tuple(np.floor(new_pos).astype(int))
         cell = self.grid[grid_pos]
         if cell in [1, 2]:
-            return  # collision
+            return 
         self.agent_pos = new_pos
         if cell == 3:
             self.grid[grid_pos] = 0
-            # self.terminal_state = (np.sum(self.grid == 3) == 0)
 
     @staticmethod
     def distance_sensor(grid, agent_pos):
@@ -143,11 +143,8 @@ class ContinuousEnvironment:
         return distances
 
     def _default_reward_function(self,grid, agent_pos, agent_size) -> tuple[float, bool]:
-        import numpy as np
-    
+        # Check for the agent size the corners of the bounding box
         half = agent_size / 2.0
-    
-        # 1) Check collisions & goal at the agent’s four corners
         corners = [
             (agent_pos[0] - half, agent_pos[1] - half),
             (agent_pos[0] - half, agent_pos[1] + half),
@@ -162,19 +159,17 @@ class ContinuousEnvironment:
             if cell == 3:
                 return 100.0, True
     
-        # 2) Small per-step penalty
+        # Standard penality for making a move
         reward = -0.01
     
-        # 3) “Opening bonus” (encourages moving into open space)
+        # Having an bonus for moving to an open space
         d = ContinuousEnvironment.distance_sensor(grid, agent_pos)
         max_view = float(grid.shape[0] + grid.shape[1])
         opening_bonus = (d["up"] + d["down"] + d["left"] + d["right"]) / (4.0 * max_view)
         reward += 0.2 * opening_bonus
-    
+
+        # False statement is used for checking if the target is reached
         return reward, False
-
-
-
 
     @staticmethod
     def evaluate_agent(grid_fp, agent, max_steps, sigma=0.0, agent_start_pos=None, random_seed=0, show_images=False):
@@ -185,7 +180,7 @@ class ContinuousEnvironment:
             agent_start_pos=agent_start_pos,
             target_fps=-1,
             random_seed=random_seed,
-            agent_size=0.5,
+            agent_size=1,
         )
         state = env.reset()
         initial = np.copy(env.grid)

@@ -90,6 +90,6 @@ def plot_learning_curves(agents, results_dir):
             print(f"{agent} average steps (last 50 episodes): {avg_steps_last:.2f}")
 
 # Example usage
-agents = ["DQNAgent"]
-results_dir = Path("learning_curves")
+agents = ["PpoNewAgent"]
+results_dir = Path("experiment_sigma")
 plot_learning_curves(agents, results_dir)
