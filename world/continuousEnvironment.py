@@ -20,12 +20,14 @@ class ContinuousEnvironment:
         target_fps: int = 30,
         random_seed=None,
         agent_size: float = 1.0,
+        step_size: float = 1.0
     ):
         random.seed(random_seed)
         self.grid_fp = grid_fp
         self.grid = Grid.load_grid(self.grid_fp).cells
         self.agent_start_pos = agent_start_pos
         self.agent_size = agent_size
+        self.step_size = step_size
         self.terminal_state = False
         self.sigma = sigma
 
@@ -97,8 +99,8 @@ class ContinuousEnvironment:
 
     def step(self, action: int):
         direction = action_to_direction(action if random.random() > self.sigma else random.randint(0, 3))
-        step_size = 1
-        new_pos = self.agent_pos + step_size * np.array(direction)
+        # step_size = 1.0
+        new_pos = self.agent_pos + self.step_size * np.array(direction)
 
         reward, goal_reached = self.reward_fn(self.grid, new_pos, self.agent_size)
         self.terminal_state = goal_reached
@@ -177,7 +179,7 @@ class ContinuousEnvironment:
 
 
     @staticmethod
-    def evaluate_agent(grid_fp, agent, max_steps, sigma=0.0, agent_start_pos=None, random_seed=0, show_images=False):
+    def evaluate_agent(grid_fp, agent, max_steps, sigma=0.0, agent_start_pos=None, random_seed=0, show_images=False, agent_size = 1.0, step_size=1.0):
         env = ContinuousEnvironment(
             grid_fp=grid_fp,
             no_gui=True,
@@ -185,7 +187,8 @@ class ContinuousEnvironment:
             agent_start_pos=agent_start_pos,
             target_fps=-1,
             random_seed=random_seed,
-            agent_size=0.5,
+            agent_size=agent_size,
+            step_size=step_size
         )
         state = env.reset()
         initial = np.copy(env.grid)
