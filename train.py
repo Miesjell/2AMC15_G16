@@ -9,7 +9,6 @@ import numpy as np
 
 from world.continuousEnvironment import ContinuousEnvironment as Environment
 from agents.random_agent import RandomAgent
-from agents.p_p_o_agent import PPOAgent
 
 def load_agent(agent_name: str, env):
     module_name = ''.join(['_' + c.lower() if c.isupper() else c for c in agent_name]).lstrip('_')
