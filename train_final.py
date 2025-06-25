@@ -6,7 +6,6 @@ import pickle
 import numpy as np
 
 from world.continuousEnvironment import ContinuousEnvironment as Environment
-from agents.p_p_o_agent import PPOAgent
 
 
 def parse_args():
