@@ -60,22 +60,6 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         steps = 0
         success = False
 
-        # for _ in range(iters):
-        #     action = agent.take_action(state)
-        #     state, reward, done, info = env.step(action)
-        #     agent.update(state, reward, info.get("actual_action", None))
-        #     total_return += reward
-        #     steps += 1
-        #
-        #     if isinstance(agent, PPOAgent) and info.get("target_reached", False):
-        #         agent.goal_reached_once = True
-        #         agent.entropy_coef = 0.0
-        #         agent.buffer = []
-        #
-        #     if done:
-        #         success = True
-        #         break
-
         if agent_name.lower() == "dqnagent":
             for _ in range(iters):
                 action = agent.take_action(state)
@@ -87,23 +71,6 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
                 if done:
                     success = True
                     break
-
-        elif agent_name.lower() == "ppoagent":
-            for _ in range(iters):
-                action = agent.take_action(state)
-                next_state, reward, done, info = env.step(action)
-                # agent.update(state, reward, action, done)
-                agent.update(state, reward, info.get("actual_action", action))
-                state = next_state
-                total_return += reward
-                steps += 1
-
-                if done:
-                    success = True
-                    break
-            if hasattr(agent, "finish_episode"):
-                agent.finish_episode()
-
         else:
             for _ in range(iters):
                 action = agent.take_action(state)
