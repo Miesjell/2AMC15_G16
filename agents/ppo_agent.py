@@ -31,7 +31,7 @@ class ActorCritic(nn.Module):
         return logits, value
 
 
-class PpoNewAgent(BaseAgent):
+class PpoAgent(BaseAgent):
     def __init__(self,
                  env=None,
                  state_dim=6,
