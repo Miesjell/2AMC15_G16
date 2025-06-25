@@ -18,6 +18,7 @@ def parse_args():
     p.add_argument("--sigma", type=float, default=0.1)
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--random_seed", type=int, default=0)
+    p.add_argument("--agent_size", type=float, default=1.0)
     return p.parse_args()
 
 
@@ -27,7 +28,7 @@ def load_agent(agent_name: str, env):
     return getattr(module, agent_name)(env)
 
 
-def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, num_runs=10):
+def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=10):
     results_dir = Path("experiment-sigma0.1-ppo")
     results_dir.mkdir(exist_ok=True, parents=True)
     start_pos = [8, 2]
@@ -43,6 +44,7 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
             target_fps=fps,
             random_seed=random_seed,
             agent_start_pos=start_pos,
+            agent_size=agent_size,
         )
 
         agent = load_agent(agent_name, env)
@@ -98,4 +100,5 @@ if __name__ == "__main__":
         fps=args.fps,
         random_seed=args.random_seed,
         no_gui=args.no_gui,
+        agent_size=args.agent_size,
     )
