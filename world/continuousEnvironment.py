@@ -110,27 +110,13 @@ class ContinuousEnvironment:
         }
 
     def _move_agent(self, new_pos):
-        half = self.agent_size / 2.0
-        corners = [
-            (new_pos[0] - half, new_pos[1] - half),
-            (new_pos[0] - half, new_pos[1] + half),
-            (new_pos[0] + half, new_pos[1] - half),
-            (new_pos[0] + half, new_pos[1] + half),
-        ]
-        for corner in corners:
-            x, y = corner
-            if not (0 <= x < self.grid.shape[0] and 0 <= y < self.grid.shape[1]):
-                return  # Out of bounds
-            cell = self.grid[int(x), int(y)]
-            if cell in (1, 2):  # Wall or obstacle
-                return
-    
+        grid_pos = tuple(np.floor(new_pos).astype(int))
+        cell = self.grid[grid_pos]
+        if cell in [1, 2]:
+            return 
         self.agent_pos = new_pos
-    
-        for corner in corners:
-            cell = self.grid[int(corner[0]), int(corner[1])]
-            if cell == 3:
-                self.grid[int(corner[0]), int(corner[1])] = 0
+        if cell == 3:
+            self.grid[grid_pos] = 0
 
     @staticmethod
     def distance_sensor(grid, agent_pos):
