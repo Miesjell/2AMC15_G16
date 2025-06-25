@@ -28,58 +28,63 @@ def load_agent(agent_name: str, env):
     return getattr(module, agent_name)(env)
 
 
-def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui):
+def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, num_runs=10):
     results_dir = Path("learning_curves")
     results_dir.mkdir(exist_ok=True, parents=True)
-    start_pos = [8, 2] if grid_path.name == "mainrestaurant.npy" else [8, 2.2]
+    start_pos = [8, 2] 
 
-    env = Environment(
-        grid_fp=grid_path,
-        no_gui=no_gui,
-        sigma=sigma,
-        target_fps=fps,
-        random_seed=random_seed,
-        agent_start_pos=start_pos,
-    )
+    for run in range(num_runs):
+        random_seed = np.random.randint(0, 1_000_000) # We want to compare different runs
+        print(f"\n=== Starting run {run+1}/{num_runs} with random_seed={random_seed} ===")
 
-    agent = load_agent(agent_name, env)
 
-    # Output CSV
-    csv_file = results_dir / f"{agent_name}_curve.csv"
-    with open(csv_file, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["episode", "return", "success", "steps"])
+        env = Environment(
+            grid_fp=grid_path,
+            no_gui=no_gui,
+            sigma=sigma,
+            target_fps=fps,
+            random_seed=random_seed,
+            agent_start_pos=start_pos,
+        )
 
-    # Training loop
-    for ep in range(episodes):
-        state = env.reset(agent_start_pos=start_pos)
-        if hasattr(agent, "reset"):
-            agent.reset()
+        agent = load_agent(agent_name, env)
 
-        total_return = 0
-        steps = 0
-        success = False
+        # Output CSV
+        csv_file = results_dir / f"{agent_name}_curve_run{run}.csv"
+        with open(csv_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["episode", "return", "success", "steps"])
 
-        for _ in range(iters):
-            action = agent.take_action(state)
-            state, reward, done, info = env.step(action)
-            agent.update(state, reward, info.get("actual_action", None))
-            total_return += reward
-            steps += 1
+        # Training loop
+        for ep in range(episodes):
+            state = env.reset(agent_start_pos=start_pos)
+            if hasattr(agent, "reset"):
+                agent.reset()
 
-            # if isinstance(agent, PPOAgent) and info.get("target_reached", False):
-            #     agent.goal_reached_once = True
-            #     agent.entropy_coef = 0.0
-            #     agent.buffer = []
+            total_return = 0
+            steps = 0
+            success = False
 
-            if done:
-                success = True
-                break
+            for _ in range(iters):
+                action = agent.take_action(state)
+                state, reward, done, info = env.step(action)
+                agent.update(state, reward, info.get("actual_action", None))
+                total_return += reward
+                steps += 1
 
-        with open(csv_file, "a", newline="") as f:
-            csv.writer(f).writerow([ep + 1, total_return, int(success), steps])
+                # if isinstance(agent, PPOAgent) and info.get("target_reached", False):
+                #     agent.goal_reached_once = True
+                #     agent.entropy_coef = 0.0
+                #     agent.buffer = []
 
-        print(f"[Train] Ep {ep + 1}: Return={total_return:.2f}, Success={success}, Steps={steps}")
+                if done:
+                    success = True
+                    break
+
+            with open(csv_file, "a", newline="") as f:
+                csv.writer(f).writerow([ep + 1, total_return, int(success), steps])
+
+            print(f"[Train] [Run {run+1}] Ep {ep + 1}: Return={total_return:.2f}, Success={success}, Steps={steps}")
 
 
 if __name__ == "__main__":
