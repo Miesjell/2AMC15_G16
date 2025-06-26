@@ -122,6 +122,18 @@ grouped = (episodes
 output_dir = Path("results_2")
 output_dir.mkdir(exist_ok=True)
 grouped.to_csv(output_dir / "summary_step_size_experiment.csv", index=False)
+# Get mean for these values for all experiment combinations
+summary = (
+    grouped
+    .groupby(["agent", "step_size"])
+    .agg(
+        avg_success_rate = ("success_rate_last50", "mean"),
+        avg_total_return_mean = ("mean_totalreturn_last50", "mean"),
+        avg_total_return_std = ("std_totalreturn_last50", "mean") 
+    )
+    .reset_index()
+)
+print(summary)
 
 # Plot learning and succes rate curves
 plot_learning_curves_from_df(
