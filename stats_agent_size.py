@@ -18,11 +18,11 @@ def load_episode_data(exp_dirs):
         # Add column with agent name and experiment value for each episode, inferred from file name
         parts = exp_dir.name.split("-")
         try:
-            step_size = float(parts[1].replace("step_size", "")) 
+            agent_size = float(parts[1].replace("agentsize", "")) 
             agent = "DQN" if "dqn" in parts[2].lower() else "PPO"
         except (IndexError, ValueError):
             raise ValueError(f"Directory naming must follow pattern "
-                             f"'experiment-step_size<val>-<algo>', got: {exp_dir.name}")
+                             f"'experiment-agentsize<val>-<algo>', got: {exp_dir.name}")
 
         # Load each file, add column run id
         for csv_file in exp_dir.glob("*_curve_run*.csv"):
@@ -33,7 +33,7 @@ def load_episode_data(exp_dirs):
 
             df = pd.read_csv(csv_file)
             df["agent"]  = agent
-            df["step_size"]  = step_size
+            df["agent_size"]  = agent_size
             df["run_id"] = run_id
             records.append(df)
     
@@ -46,7 +46,7 @@ def load_episode_data(exp_dirs):
 # Function to plot graphs learning curves, success rates and avg steps
 def plot_learning_curves_from_df(
     episodes,
-    group_vars=("agent", "step_size"),
+    group_vars=("agent", "agent_size"),
     window=50,
     save_dir=Path("results_2")
 ):
@@ -108,11 +108,11 @@ def plot_learning_curves_from_df(
         plt.show()
 
 # Construct dataframe with all runs of the experiment
-episodes = load_episode_data(['experiment-step_size0.5-dqn', 'experiment-step_size0.5-ppo', 'experiment-step_size1.0-dqn', 'experiment-step_size1.0-ppo'])
+episodes = load_episode_data(['experiment-agentsize0.5-dqn', 'experiment-agentsize0.5-ppo', 'experiment-agentsize1.5-dqn', 'experiment-agentsize1.5-ppo'])
 
 # Compute success rate per run and the mean of the total return in the final episodes
 grouped = (episodes
-           .groupby(["agent", "step_size", "run_id"])
+           .groupby(["agent", "agent_size", "run_id"])
            .agg(
                success_rate_last50 = ("success", lambda s: s.tail(50).mean()),
                mean_totalreturn_last50 = ("return",  lambda s: s.tail(50).mean()),
@@ -126,7 +126,7 @@ grouped.to_csv(output_dir / "summary_step_size_experiment.csv", index=False)
 # Plot learning and succes rate curves
 plot_learning_curves_from_df(
     episodes,
-    group_vars=("agent", "step_size"),
+    group_vars=("agent", "agent_size"),
     window=50,
     save_dir=Path("results_2")
 )
