@@ -29,7 +29,7 @@ def load_agent(agent_name: str, env):
 
 
 def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=10):
-    results_dir = Path("experiment-sigma0.1-ppo")
+    results_dir = Path("experiment-agentsize1.5-ppo")
     results_dir.mkdir(exist_ok=True, parents=True)
     start_pos = [8, 2]
     
@@ -50,7 +50,7 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         agent = load_agent(agent_name, env)
 
         # Output CSV
-        csv_file = results_dir / f"{agent_name}_curve_run{run}.csv"
+        csv_file = results_dir / f"{agent_name}_curve_run{run+1}.csv"
         with open(csv_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["episode", "return", "success", "steps"])
