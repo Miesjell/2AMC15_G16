@@ -42,16 +42,15 @@ class PpoAgent(BaseAgent):
                  entropy_coef=0.01,
                  value_coef=0.5,
                  max_grad_norm=0.5,
-                 seed=0,
                  hidden_size=64,
                  ppo_epochs=4,
                  batch_size=64,
                  gae_lambda=0.95):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(seed)
+        # random.seed(seed)
+        # np.random.seed(seed)
+        # torch.manual_seed(seed)
+        # if torch.cuda.is_available():
+        #     torch.cuda.manual_seed_all(seed)
 
         self.gamma = gamma
         self.clip_eps = clip_eps
