@@ -20,7 +20,7 @@ class ContinuousEnvironment:
         target_fps: int = 30,
         random_seed=None,
         agent_size: float = 1.0,
-        step_size: float = 1.0,
+        step_size: float = 0.5,
     ):
         random.seed(random_seed)
         self.grid_fp = grid_fp
