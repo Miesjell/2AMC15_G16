@@ -120,7 +120,30 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
 
             print(f"[Train] [Run {run+1}] Ep {ep + 1}: Return={total_return:.2f}, Success={success}, Steps={steps}")
 
+        eval_episodes = 10  # Number of evaluation episodes
+        eval_returns = []
+        for eval_ep in range(eval_episodes):
+            eval_return = Environment.evaluate_agent(
+                grid_fp=args.grid,
+                agent=agent,
+                max_steps=iters,
+                sigma=sigma,
+                agent_start_pos=start_pos,
+                random_seed=random_seed + eval_ep, 
+                show_images=False,
+            )
+            eval_returns.append(eval_return)
+            print(f"[Eval] Episode {eval_ep+1}: Return={eval_return:.2f}")
 
+        eval_dir = results_dir / "eval"
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        with open(eval_dir / f"{agent_name}_eval_curve.csv", "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["eval_episode", "return"])
+            for i, ret in enumerate(eval_returns):
+                writer.writerow([i+1, ret])
+
+        print(f"[Eval] Average Return over {eval_episodes} episodes: {np.mean(eval_returns):.2f}")
 
 if __name__ == "__main__":
     args = parse_args()
