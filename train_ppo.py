@@ -49,7 +49,6 @@ def load_agent(agent_name: str, env):
     return getattr(module, agent_name)(env)
 
 
-<<<<<<< Updated upstream
 
 def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=5):
     """
@@ -67,11 +66,7 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         agent_size: Size of the agent in the environment.
         num_runs: Number of independent runs for statistics.
     """
-    results_dir = Path("experiment-sigma0.2-ppo")
-=======
-def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=1):
     results_dir = Path("experiment4-ppo")
->>>>>>> Stashed changes
     results_dir.mkdir(exist_ok=True, parents=True)
     start_pos = [8, 2]  # Fixed agent start position
 
@@ -91,13 +86,8 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         )
         agent = load_agent(agent_name, env)
 
-<<<<<<< Updated upstream
-        # Prepare output CSV for this run
-        csv_file = results_dir / f"{agent_name}_curve_run{run+1}.csv"
-=======
         # Output CSV
         csv_file = results_dir / f"{agent_name}_curve_run{run}.csv"
->>>>>>> Stashed changes
         with open(csv_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["episode", "return", "success", "steps"])
