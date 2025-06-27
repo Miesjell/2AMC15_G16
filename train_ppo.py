@@ -49,6 +49,7 @@ def load_agent(agent_name: str, env):
     return getattr(module, agent_name)(env)
 
 
+<<<<<<< Updated upstream
 
 def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=5):
     """
@@ -67,6 +68,10 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         num_runs: Number of independent runs for statistics.
     """
     results_dir = Path("experiment-sigma0.2-ppo")
+=======
+def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, no_gui, agent_size, num_runs=1):
+    results_dir = Path("experiment4-ppo")
+>>>>>>> Stashed changes
     results_dir.mkdir(exist_ok=True, parents=True)
     start_pos = [8, 2]  # Fixed agent start position
 
@@ -86,8 +91,13 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
         )
         agent = load_agent(agent_name, env)
 
+<<<<<<< Updated upstream
         # Prepare output CSV for this run
         csv_file = results_dir / f"{agent_name}_curve_run{run+1}.csv"
+=======
+        # Output CSV
+        csv_file = results_dir / f"{agent_name}_curve_run{run}.csv"
+>>>>>>> Stashed changes
         with open(csv_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["episode", "return", "success", "steps"])
@@ -126,6 +136,32 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
                 csv.writer(f).writerow([ep + 1, total_return, int(success), steps])
 
             print(f"[Train] [Run {run+1}] Ep {ep + 1}: Return={total_return:.2f}, Success={success}, Steps={steps}")
+
+        eval_episodes = 10  # Number of evaluation episodes
+        eval_returns = []
+        for eval_ep in range(eval_episodes):
+            eval_return = Environment.evaluate_agent(
+                grid_fp=args.grid,
+                agent=agent,
+                max_steps=iters,
+                sigma=sigma,
+                agent_start_pos=start_pos,
+                random_seed=random_seed + eval_ep, 
+                show_images=False,
+            )
+            eval_returns.append(eval_return)
+            print(f"[Eval] Episode {eval_ep+1}: Return={eval_return:.2f}")
+
+        eval_dir = results_dir / "eval"
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        with open(eval_dir / f"{agent_name}_eval_curve.csv", "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["eval_episode", "return"])
+            for i, ret in enumerate(eval_returns):
+                writer.writerow([i+1, ret])
+
+        print(f"[Eval] Average Return over {eval_episodes} episodes: {np.mean(eval_returns):.2f}")
+
 
 
 if __name__ == "__main__":
