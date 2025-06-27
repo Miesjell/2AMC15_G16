@@ -24,7 +24,7 @@ def parse_args():
     p.add_argument("grid", type=Path, help="Grid file path")
     p.add_argument("-a", "--agent", type=str, default="PpoAgent",
                    help="Name of the agent class to use (PpoAgent)")
-    p.add_argument("--episodes", type=int, default=100)
+    p.add_argument("--episodes", type=int, default=3000)
     p.add_argument("--iters", type=int, default=1000)
     p.add_argument("--no_gui", action="store_true")
     p.add_argument("--sigma", type=float, default=0.1)
