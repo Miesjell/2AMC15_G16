@@ -1,3 +1,9 @@
+
+"""
+Analyze and visualize step size experiment results.
+Loads experiment CSVs, aggregates statistics, and plots learning curves, success rates, and average steps.
+"""
+
 import pandas as pd
 from pathlib import Path
 import re
@@ -5,26 +11,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Function to load data from experiments
 def load_episode_data(exp_dirs):
-    """ Function to combine all experiment results into one df
+    """
+    Combine all experiment results from the given directories into a single DataFrame.
+    Each row represents an episode from a specific run, with agent type and step size inferred from directory name.
+    Args:
+        exp_dirs (list of str or Path): List of experiment result directories.
+    Returns:
+        pd.DataFrame: Combined episode data from all runs and experiments.
+    Raises:
+        FileNotFoundError: If a directory does not exist.
+        ValueError: If directory naming does not match expected pattern or run id cannot be parsed.
+        RuntimeError: If no CSV files are found.
     """
     records = []
 
     for exp_dir in map(Path, exp_dirs):
         if not exp_dir.is_dir():
             raise FileNotFoundError(f"Directory not found: {exp_dir}")
-        
-        # Add column with agent name and experiment value for each episode, inferred from file name
+        # Infer step size and agent type from directory name
         parts = exp_dir.name.split("-")
         try:
             step_size = float(parts[1].replace("step_size", "")) 
             agent = "DQN" if "dqn" in parts[2].lower() else "PPO"
         except (IndexError, ValueError):
-            raise ValueError(f"Directory naming must follow pattern "
-                             f"'experiment-step_size<val>-<algo>', got: {exp_dir.name}")
+            raise ValueError(
+                f"Directory naming must follow pattern 'experiment-step_size<val>-<algo>', got: {exp_dir.name}"
+            )
 
-        # Load each file, add column run id
+        # Load each run's CSV and annotate with metadata
         for csv_file in exp_dir.glob("*_curve_run*.csv"):
             run_id_match = re.search(r"run(\d+)", csv_file.stem)
             if not run_id_match:
@@ -43,7 +58,7 @@ def load_episode_data(exp_dirs):
     episodes = pd.concat(records, ignore_index=True)
     return episodes
 
-# Function to plot graphs learning curves, success rates and avg steps
+
 def plot_learning_curves_from_df(
     episodes,
     group_vars=("agent", "step_size"),
@@ -51,8 +66,12 @@ def plot_learning_curves_from_df(
     save_dir=Path("results_2")
 ):
     """
-    Draw learning curves (return, success, steps) with mean ±95 % CI,
-    averaged over the runs for each experimental setting.
+    Plot learning curves (return, success, steps) with mean ±95% CI, averaged over runs for each experimental setting.
+    Args:
+        episodes (pd.DataFrame): Combined episode data for all runs and experiments.
+        group_vars (tuple): Columns to group by (e.g., agent, step_size).
+        window (int): Rolling window size for smoothing.
+        save_dir (Path): Directory to save plots.
     """
     sns.set(style="whitegrid")
     metrics = {
@@ -74,7 +93,7 @@ def plot_learning_curves_from_df(
             .transform(lambda s: s.rolling(window, min_periods=1).mean())
         )
 
-        # Aggregate the 10 runs, using mean and Standard Error of the Mean
+        # Aggregate the runs, using mean and Standard Error of the Mean
         summary = (
             episodes
             .groupby(list(group_vars) + ["episode"])[f"{col}_roll"]
