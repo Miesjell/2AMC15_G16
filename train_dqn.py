@@ -1,18 +1,29 @@
+
+"""
+Train a DQN (or compatible) agent in a continuous environment and log results.
+Supports multiple runs for statistical comparison and saves episode returns, success, and steps to CSV.
+"""
+
 from argparse import ArgumentParser
 import importlib
 from pathlib import Path
 import csv
-import pickle
 import numpy as np
 
 from world.continuousEnvironment import ContinuousEnvironment as Environment
-#from agents.p_p_o_agent import PPOAgent
+
 
 
 def parse_args():
+    """
+    Parse command-line arguments for training configuration.
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     p = ArgumentParser()
     p.add_argument("grid", type=Path, help="Grid file path")
-    p.add_argument("-a", "--agent", type=str, default="RandomAgent")
+    p.add_argument("-a", "--agent", type=str, default="DQNAgent",
+                   help="Name of the agent class to use (DQNAgent")
     p.add_argument("--episodes", type=int, default=100)
     p.add_argument("--iters", type=int, default=1000)
     p.add_argument("--no_gui", action="store_true")
@@ -23,22 +34,47 @@ def parse_args():
     return p.parse_args()
 
 
+
 def load_agent(agent_name: str, env):
+    """
+    Dynamically import and instantiate the agent class by name.
+    Args:
+        agent_name (str): Name of the agent class.
+        env: Environment instance to pass to the agent.
+    Returns:
+        Instantiated agent object.
+    """
     module_name = ''.join(['_' + c.lower() if c.isupper() else c for c in agent_name]).lstrip('_')
     module = importlib.import_module(f"agents.{module_name}")
     return getattr(module, agent_name)(env)
 
 
-def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, agent_size, no_gui, num_runs=10):
-    results_dir = Path("experiment-stepsize0.5-dqn")
+
+def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, agent_size, no_gui, num_runs=5):
+    """
+    Train the specified agent in the environment for multiple runs and episodes.
+    Logs episode returns, success, and steps to CSV for each run.
+    Args:
+        grid_path: Path to grid configuration file.
+        agent_name: Name of the agent class to use.
+        episodes: Number of episodes per run.
+        iters: Max steps per episode.
+        sigma: Environment noise parameter.
+        fps: Frames per second for environment.
+        random_seed: Initial random seed (overridden for each run).
+        agent_size: Size of the agent in the environment.
+        no_gui: Disable GUI rendering if True.
+        num_runs: Number of independent runs for statistics.
+    """
+    results_dir = Path("experiment-stepsize0.5ddaffy-dqn")
     results_dir.mkdir(exist_ok=True, parents=True)
-    start_pos = [8, 2] 
+    start_pos = [8, 2]  # Fixed agent start position
 
     for run in range(num_runs):
-        random_seed = np.random.randint(0, 1_000_000) # We want to compare different runs
+        random_seed = np.random.randint(0, 1_000_000)  # Use a new random seed for each run
         print(f"\n=== Starting run {run+1}/{num_runs} with random_seed={random_seed} ===")
 
-
+        # Create environment and agent
         env = Environment(
             grid_fp=grid_path,
             no_gui=no_gui,
@@ -48,16 +84,15 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
             agent_start_pos=start_pos,
             agent_size=agent_size,
         )
-
         agent = load_agent(agent_name, env)
 
-        # Output CSV
+        # Prepare output CSV for this run
         csv_file = results_dir / f"{agent_name}_curve_run{run+1}.csv"
         with open(csv_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["episode", "return", "success", "steps"])
 
-        # Training loop
+        # Training loop for each episode
         for ep in range(episodes):
             state = env.reset(agent_start_pos=start_pos)
             if hasattr(agent, "reset"):
@@ -74,19 +109,17 @@ def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed,
                 total_return += reward
                 steps += 1
 
-                # if isinstance(agent, PPOAgent) and info.get("target_reached", False):
-                #     agent.goal_reached_once = True
-                #     agent.entropy_coef = 0.0
-                #     agent.buffer = []
 
                 if done:
                     success = True
                     break
 
+            # Log episode results
             with open(csv_file, "a", newline="") as f:
                 csv.writer(f).writerow([ep + 1, total_return, int(success), steps])
 
             print(f"[Train] [Run {run+1}] Ep {ep + 1}: Return={total_return:.2f}, Success={success}, Steps={steps}")
+
 
 
 if __name__ == "__main__":

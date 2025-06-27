@@ -6,7 +6,12 @@ from agents.base_agent import BaseAgent
 import random
 from torch.utils.data import DataLoader, TensorDataset
 
+
 class ActorCritic(nn.Module):
+    """
+    Combined Actor-Critic neural network for PPO.
+    The shared layers process the input state, then split into actor (policy) and critic (value) heads.
+    """
     def __init__(self, state_dim, action_dim, hidden_size=64):
         super().__init__()
         self.shared = nn.Sequential(
@@ -20,18 +25,25 @@ class ActorCritic(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
+        """Orthogonal initialization for linear layers."""
         if isinstance(m, nn.Linear):
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
+        """Forward pass: returns action logits and state value."""
         shared_out = self.shared(x)
         logits = self.actor(shared_out)
         value = self.critic(shared_out)
         return logits, value
 
 
+
 class PpoAgent(BaseAgent):
+    """
+    Proximal Policy Optimization (PPO) agent.
+    Handles experience collection, advantage estimation, and policy/value updates.
+    """
     def __init__(self,
                  env=None,
                  state_dim=6,
@@ -46,12 +58,23 @@ class PpoAgent(BaseAgent):
                  ppo_epochs=4,
                  batch_size=64,
                  gae_lambda=0.95):
-        # random.seed(seed)
-        # np.random.seed(seed)
-        # torch.manual_seed(seed)
-        # if torch.cuda.is_available():
-        #     torch.cuda.manual_seed_all(seed)
-
+        """
+        Initialize PPO agent with hyperparameters and neural network model.
+        Args:
+            env: Environment instance (optional).
+            state_dim: Dimension of state space.
+            action_dim: Dimension of action space.
+            gamma: Discount factor.
+            clip_eps: PPO clipping epsilon.
+            lr: Learning rate.
+            entropy_coef: Entropy regularization coefficient.
+            value_coef: Value loss coefficient.
+            max_grad_norm: Max gradient norm for clipping.
+            hidden_size: Hidden layer size for network.
+            ppo_epochs: Number of PPO update epochs per episode.
+            batch_size: Minibatch size for updates.
+            gae_lambda: Lambda for GAE advantage estimation.
+        """
         self.gamma = gamma
         self.clip_eps = clip_eps
         self.entropy_coef = entropy_coef
@@ -67,6 +90,10 @@ class PpoAgent(BaseAgent):
         self.reset()
 
     def reset(self):
+        """
+        Clear all stored episode data (states, actions, rewards, etc.).
+        Call at the start and end of each episode.
+        """
         self.states = []
         self.actions = []
         self.rewards = []
@@ -75,6 +102,14 @@ class PpoAgent(BaseAgent):
         self.dones = []
 
     def take_action(self, state):
+        """
+        Select an action for the given state using the current policy.
+        Stores the transition for later training.
+        Args:
+            state: Current environment state.
+        Returns:
+            action (int): Selected action index.
+        """
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         with torch.no_grad():
             logits, value = self.policy(state_tensor)
@@ -91,13 +126,26 @@ class PpoAgent(BaseAgent):
         return action.item()
 
     def update(self, state, reward, action, done=False):
-        self.rewards.append(reward / 10.0)  # Normalize reward
+        """
+        Store reward and done flag for the current step.
+        Args:
+            state: Current state (unused, for API compatibility).
+            reward: Reward received at this step.
+            action: Action taken (unused, for API compatibility).
+            done: Whether the episode ended at this step.
+        """
+        self.rewards.append(reward / 10.0)  # Normalize reward for stability
         self.dones.append(done)
 
     def finish_episode(self):
+        """
+        Complete an episode: compute returns and advantages, then update the policy and value networks.
+        Uses Generalized Advantage Estimation (GAE) and PPO clipped objective.
+        """
         if len(self.rewards) == 0:
             return
 
+        # Convert episode data to arrays/tensors
         states = np.array(self.states)
         actions = np.array(self.actions)
         rewards = np.array(self.rewards)
@@ -105,10 +153,12 @@ class PpoAgent(BaseAgent):
         values = torch.tensor(self.values).to(self.device)
         dones = np.array(self.dones)
 
+        # Bootstrap value for final state
         with torch.no_grad():
             _, next_value = self.policy(torch.FloatTensor(self.states[-1]).unsqueeze(0).to(self.device))
             next_value = next_value.item()
 
+        # Compute returns (discounted sum of rewards)
         returns = np.zeros_like(rewards)
         advantages = np.zeros_like(rewards)
         for t in reversed(range(len(rewards))):
@@ -117,6 +167,7 @@ class PpoAgent(BaseAgent):
             returns[t] = rewards[t] + self.gamma * next_value
             next_value = returns[t]
 
+        # Compute GAE advantages
         last_gae_lam = 0
         for t in reversed(range(len(rewards))):
             if t == len(rewards) - 1:
@@ -128,8 +179,10 @@ class PpoAgent(BaseAgent):
             delta = rewards[t] + self.gamma * next_value * next_nonterminal - values[t]
             advantages[t] = last_gae_lam = delta + self.gamma * self.gae_lambda * next_nonterminal * last_gae_lam
 
+        # Normalize advantages for stability
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
+        # Prepare tensors for training
         states_tensor = torch.FloatTensor(states).to(self.device)
         actions_tensor = torch.LongTensor(actions).to(self.device)
         returns_tensor = torch.FloatTensor(returns).to(self.device)
@@ -138,6 +191,7 @@ class PpoAgent(BaseAgent):
         dataset = TensorDataset(states_tensor, actions_tensor, returns_tensor, advantages_tensor, log_probs)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
+        # PPO update loop
         for _ in range(self.ppo_epochs):
             for batch_states, batch_actions, batch_returns, batch_advantages, batch_old_log_probs in loader:
                 logits, values_pred = self.policy(batch_states)
