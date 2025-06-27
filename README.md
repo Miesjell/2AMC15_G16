@@ -52,18 +52,21 @@ We extended the original environment with the following contributions:
    uv sync
    ```
 
-4. **Train each agent**:
+4. **Train each agent**: 
+   
+    For DQNAgent: 
    ```bash
-    1. For DQNAgent: python train_dqn.py grid_configs/mainrestaurant.npy [--no_gui]
+    python train_dqn.py grid_configs/mainrestaurant.npy [--no_gui]
     ```
 
+    For PPOAgent: 
     ```bash
-     2. For PPOAgent: python train_ppo.py grid_configs/mainrestaurant.npy [--no_gui]
+     python train_ppo.py grid_configs/mainrestaurant.npy [--no_gui]
     ```
-    positional arguments:
+    Positional arguments:
 
     ```bash
-    GRID                  Paths to the grid file to use. There can be more than one.
+    GRID                       Paths to the grid file to use. There can be more than one.
 
     Options:
     -h, --help                 show this help message and exit
@@ -73,6 +76,7 @@ We extended the original environment with the following contributions:
     --iter ITER                Number of iterations to go through. Should be integer. (int, default=1000)
     --random_seed RANDOM_SEED  Random seed value for the environment. (int, default=0)
     --episodes                 Number of training loops to go through. Should be integer. (int, default=3000)
+    --agent_size               The size of the agent in our environment. Should be an integer (int, default=1.0)
     ```
 
    This will generate:
