@@ -7,21 +7,23 @@ This repository is based on the official [Data Intelligence Challenge 2AMC15-202
 We extended the original environment with the following contributions:
 
 - **New agents** implemented under the `agents/` folder:
-  - `MonteCarloAgent`
-  - `QLearningAgent`
-  - `ValueIterationAgent`
-- **Modified `train.py`**:
+  - `DQNAgent`
+  - `PPOAgent`
+- **New scirpt `train_dqn.py, train_ppo.py`**:
   - Added support for extra parameters like `--episodes` for training length.
   - Exports **learning curve data** as CSV and plots PNG images under `learning_curves/`.
-  - Automatically selects appropriate start positions based on the grid file
   - Periodically evaluates and records agent performance
-- **New script: `compare.py`**:
-  - Automates training all three agents.
-  - Produces a combined learning curve plot for visual comparison.
-- **Modified  `environment.py`**
-  - Customizable **reward function**
+- **New script: `stats_agent.py, stats_sigma.py, stats_step_size.py`**:
+  - Average return over the last 50 episodes.
+  - It plots success rate (% of episodes where the agent reached the goal).
+  - It plots average number of steps taken to reach the target.
+  - It plots 1 learning curve per experiment.
+- **Modified  `continiousEnvironment.py`**
+  - Continuous agent movement with adjustable step size, agent_size.
+  - Collision detection and reward handling, including penalties for walls and rewards for reaching the goal.
+  - Modular reward function, customizable to encourage exploration and path efficiency
 - **Experimentation-ready**:
-  - Configurable grid environments (e.g., `Open_Field.npy`).
+  - Two grid environments (`mainrestaurant.npy`) and (`mainrestaurant2.npy`)
   - Adjustable parameters like discount factor `gamma`, stochasticity `sigma`, and `episodes`.
 
 ---
@@ -38,7 +40,7 @@ We extended the original environment with the following contributions:
 
 2. **Clone the repository**:
    ```bash
-  Wasn't anonymous hihi
+   git clone https://github.com/Miesjell/2AMC15_G16.git
    ```
 
 3. **Install dependencies**:
@@ -50,25 +52,27 @@ We extended the original environment with the following contributions:
    uv sync
    ```
 
-4. **Train a specific agent**:
+4. **Train each agent**:
    ```bash
-    usage: train.py [-h] [--no_gui] [--sigma SIGMA] [--fps FPS] [--iter ITER]
-                [--random_seed RANDOM_SEED] 
-                GRID [GRID ...]
+    1. For DQNAgent: python train_dqn.py grid_configs/mainrestaurant.npy [--no_gui]
+    ```
 
-    DIC Reinforcement Learning Trainer.
-
+    ```bash
+     2. For PPOAgent: python train_ppo.py grid_configs/mainrestaurant.npy [--no_gui]
+    ```
     positional arguments:
-    GRID                  Paths to the grid file to use. There can be more than
-                        one.
-    options:
+
+    ```bash
+    GRID                  Paths to the grid file to use. There can be more than one.
+
+    Options:
     -h, --help                 show this help message and exit
     --no_gui                   Disables rendering to train faster (boolean)
-    --sigma SIGMA              Sigma value for the stochasticity of the environment. (float, default=0.1, should be in [0, 1])
+    --sigma SIGMA              Sigma value for the stochasticity of the environment. (float, default=0.1, should be in [0,1])
     --fps FPS                  Frames per second to render at. Only used if no_gui is not set. (int, default=30)
     --iter ITER                Number of iterations to go through. Should be integer. (int, default=1000)
     --random_seed RANDOM_SEED  Random seed value for the environment. (int, default=0)
-    --episodes                 Number of training loops to go through. Should be integer. (int, default=501)
+    --episodes                 Number of training loops to go through. Should be integer. (int, default=3000)
     ```
 
    This will generate:
@@ -77,16 +81,19 @@ We extended the original environment with the following contributions:
 
 5. **Run all agents and compare**:
    ```bash
-   python compare.py
+   python stats_sigma.py
+   python stats_agent_size.py
+   python stats_step_size.py
    ```
     This will generate:
-   - Comparable learning curves of all three algorithms under `learning_curves/`
+   - Average return over the last 50 episodes.
+   - Success rate (% of episodes where the agent reached the goal) plot.
+   - Average number of steps taken to reach the target plot.
+   - 1 learning curve plot per experiment.
    
-   You can adjust settings directly in `compare.py`, such as:
+   You can adjust settings directly in all of the 3 `stats.py`, such as:
    ```python
-   grid_path = "grid_configs/A1_grid.npy"
-   episodes = 501
-   sigma = 0.1
+   episodes = load_episode_data([...])
    ```
 ---
 ## Code guide
@@ -180,17 +187,20 @@ You are encouraged to test how different setups affect learning:
 
 ```
 agents/
-├── MonteCarloAgent.py
-├── QLearningAgent.py
-├── ValueIterationAgent.py
+├── DQNAgent.py
+├── PPOAgent.py
 
-learning_curves/
-├── QLearningAgent_curve.csv
-├── compare_learning_curves_*.png
+results2/
+├── summary_expiriment.csv
+├── compare_succes_rates_agent_expiriment.png
+├── compare_learning_curves_agent_experiment.png
 
-compare.py  # Script to train and compare all agents
-train.py    # Modified to accept more parameters and plot learning curves
-environment.py   # Modified reward function
+traindqn.py   # Modified to accept more parameters and plot learning curves
+trainppo.py  # Implemented to run based on the dqn agent.
+continiousEnvironment.py   # Modified reward function and move fucntion...
+stats_agent_size.py # post procressing of the train results for the experiments.
+stats_sigma.py # post procressing of the train results for the experiments.
+stats_step_size.py # post procressing of the train results for the experiments.
 ```
 
 ---
