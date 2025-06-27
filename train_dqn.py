@@ -29,8 +29,8 @@ def load_agent(agent_name: str, env):
     return getattr(module, agent_name)(env)
 
 
-def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, agent_size, no_gui, num_runs=10):
-    results_dir = Path("experiment-stepsize0.5-dqn")
+def train_agent(grid_path, agent_name, episodes, iters, sigma, fps, random_seed, agent_size, no_gui, num_runs=5):
+    results_dir = Path("experiment-stepsize0.5ddaffy-dqn")
     results_dir.mkdir(exist_ok=True, parents=True)
     start_pos = [8, 2] 
 
