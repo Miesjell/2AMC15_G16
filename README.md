@@ -56,12 +56,22 @@ We extended the original environment with the following contributions:
    
     For DQNAgent: 
    ```bash
-    python train_dqn.py grid_configs/mainrestaurant.npy [--no_gui]
+    python train_dqn.py grid_configs/mainrestaurant.npy --no_gui
+    ```
+
+    For quick demo:
+    ```bash
+    python train_dqn.py grid_configs/mainrestaurant.npy --no_gui --episodes 5
     ```
 
     For PPOAgent: 
     ```bash
      python train_ppo.py grid_configs/mainrestaurant.npy [--no_gui]
+    ```
+
+    For quick demo:
+    ```bash
+    python train_ppo.py grid_configs/mainrestaurant.npy --no_gui --episodes 5
     ```
     Positional arguments:
 
