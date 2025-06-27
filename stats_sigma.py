@@ -127,7 +127,7 @@ def plot_learning_curves_from_df(
         plt.show()
 
 # Construct dataframe with all runs of the experiment
-episodes = load_episode_data(['experiment-sigma0.0-dqn', 'experiment-sigma0.0-ppo', 'experiment-sigma0.2-dqn', 'experiment-sigma0.2-ppo'])
+episodes = load_episode_data(['experiment-sigma0.0-dqn', 'experiment-sigma0.0-ppo', 'experiment-sigma0.1-dqn', 'experiment-sigma0.1-ppo','experiment-sigma0.2-dqn', 'experiment-sigma0.2-ppo'])
 
 # Compute success rate per run and the mean of the total return in the final episodes
 grouped = (episodes
